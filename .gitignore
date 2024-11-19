@@ -1,0 +1,34 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Dependency directories
+node_modules/
+
+# Expo specific
+.expo/
+.expo-shared/
+
+# Firebase config
+google-services.json
+GoogleService-Info.plist
+
+# IDE specific
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build output
+build/
+dist/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
