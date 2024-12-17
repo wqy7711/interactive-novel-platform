@@ -1,38 +1,28 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet, Alert } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import HomeScreen from './screens/HomeScreen';
+
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-
-  const handlePress = () => {
-    Alert.alert("Welcome", "This is a test ！", [{ text: "Successful" }]);
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Fictify</Text>
-      <Text style={styles.subtitle}>Welcome to the testing page</Text>
-      <Button title="Click to test" onPress={handlePress} />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerStyle: { backgroundColor: '#fff' },
+          headerTitleStyle: { color: '#333', fontWeight: 'bold' },
+          headerTitleAlign: 'center',
+        }}
+      >
+        <Stack.Screen 
+          name="Home" 
+          component={HomeScreen} 
+          options={{ title: 'Home' }} 
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-  },
-});
-
