@@ -5,6 +5,7 @@ import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import ReadScreen from './screens/ReadScreen';
+import CreateScreen from './screens/CreateScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -39,6 +40,11 @@ export default function App() {
           name="Read" 
           component={ReadScreen} 
           options={{ title: 'Read Story' }} 
+        />
+        <Stack.Screen 
+          name="Create" 
+          component={CreateScreen} 
+          options={{ title: 'Create Story' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
