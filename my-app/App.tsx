@@ -6,6 +6,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import ReadScreen from './screens/ReadScreen';
 import CreateScreen from './screens/CreateScreen';
+import FavoritesScreen from './screens/FavoritesScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -45,6 +46,11 @@ export default function App() {
           name="Create" 
           component={CreateScreen} 
           options={{ title: 'Create Story' }} 
+        />
+        <Stack.Screen 
+          name="Favorites" 
+          component={FavoritesScreen} 
+          options={{ title: 'Favorites' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
