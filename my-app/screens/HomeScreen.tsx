@@ -13,15 +13,16 @@ const DATA = [
   { id: '6', title: 'Parallel Worlds', image: exampleImage },
 ];
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: { navigation: any }) {
   const [searchText, setSearchText] = useState('');
 
   const renderItem = ({ item }: { item: { id: string; title: string; image: any } }) => (
-    <TouchableOpacity style={styles.card} onPress={() => alert(`You selected: ${item.title}`)}>
+    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Read')}>
       <Image source={item.image} style={styles.image} />
       <Text style={styles.title}>{item.title}</Text>
     </TouchableOpacity>
   );
+  
 
   return (
     <SafeAreaView style={styles.container}>
