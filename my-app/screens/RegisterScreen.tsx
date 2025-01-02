@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Aler
 import { Ionicons } from '@expo/vector-icons';
 
 export default function RegisterScreen({ navigation }: { navigation: any }) {
+  const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +26,21 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
         <View style={styles.header}>
           <Ionicons name="person-add-outline" size={60} color="#4CAF50" />
           <Text style={styles.headerText}>Create Account</Text>
+        </View>
+
+        <View style={styles.roleContainer}>
+          <TouchableOpacity
+            style={[styles.roleButton, role === 'user' && styles.selectedRole]}
+            onPress={() => setRole('user')}
+          >
+            <Text style={styles.roleText}>User</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.roleButton, role === 'admin' && styles.selectedRole]}
+            onPress={() => setRole('admin')}
+          >
+            <Text style={styles.roleText}>Admin</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.inputContainer}>
@@ -104,6 +120,28 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     paddingHorizontal: 15,
     fontSize: 16,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginVertical: 15,
+  },
+  roleButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 12,
+    backgroundColor: '#e6e6e6',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  selectedRole: {
+    backgroundColor: '#4CAF50',
+  },
+  roleText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   button: {
     backgroundColor: '#4CAF50',

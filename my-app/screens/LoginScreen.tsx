@@ -3,23 +3,43 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Aler
 import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
+  const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    if (email === '' || password === '') {
-      Alert.alert('Error', 'Please enter both email and password.');
+    if (!email || !password || !role) {
+      Alert.alert('Error', 'Please fill in all fields and select a role.');
     } else {
-      Alert.alert('Success', 'Login successful!');
-      navigation.navigate('Home');
+      if (role === 'user') {
+        Alert.alert('Success', 'Logged in as User!');
+        navigation.navigate('Home');
+      } else if (role === 'admin') {
+        Alert.alert('Success', 'Logged in as Admin!');
+        navigation.navigate('AdminDashboard');
+      }
     }
   };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="log-in-outline" size={60} color="#4CAF50" />
         <Text style={styles.headerText}>Welcome Back</Text>
+      </View>
+
+      <View style={styles.roleContainer}>
+        <TouchableOpacity
+          style={[styles.roleButton, role === 'user' && styles.selectedRole]}
+          onPress={() => setRole('user')}
+        >
+          <Text style={styles.roleText}>User</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.roleButton, role === 'admin' && styles.selectedRole]}
+          onPress={() => setRole('admin')}
+        >
+          <Text style={styles.roleText}>Admin</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.inputContainer}>
@@ -46,7 +66,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don't have an account?</Text>
-        <TouchableOpacity onPress={() => Alert.alert('Sign Up', 'Navigate to Sign Up Screen')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={styles.signUpText}> Sign Up</Text>
         </TouchableOpacity>
       </View>
@@ -81,6 +101,28 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     paddingHorizontal: 15,
     fontSize: 16,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginVertical: 15,
+  },
+  roleButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 12,
+    backgroundColor: '#e6e6e6',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  selectedRole: {
+    backgroundColor: '#4CAF50',
+  },
+  roleText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   button: {
     backgroundColor: '#4CAF50',
