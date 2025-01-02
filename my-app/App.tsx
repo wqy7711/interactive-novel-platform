@@ -8,6 +8,7 @@ import ReadScreen from './screens/ReadScreen';
 import CreateScreen from './screens/CreateScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import BookmarksScreen from './screens/BookmarksScreen';
+import ProfileScreen from './screens/ProfileScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -57,6 +58,11 @@ export default function App() {
           name="Bookmarks" 
           component={BookmarksScreen} 
           options={{ title: 'Bookmarks' }} 
+        />
+        <Stack.Screen 
+          name="Profile" 
+          component={ProfileScreen} 
+          options={{ title: 'Profile' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
