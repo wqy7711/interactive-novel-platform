@@ -9,7 +9,7 @@ import CreateScreen from './screens/CreateScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import BookmarksScreen from './screens/BookmarksScreen';
 import ProfileScreen from './screens/ProfileScreen';
-
+import AdminDashboardScreen from './screens/AdminDashboardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -63,6 +63,11 @@ export default function App() {
           name="Profile" 
           component={ProfileScreen} 
           options={{ title: 'Profile' }} 
+        />
+        <Stack.Screen 
+          name="AdminDashboard" 
+          component={AdminDashboardScreen} 
+          options={{ title: 'Admin Dashboard' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
