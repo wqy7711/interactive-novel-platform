@@ -9,7 +9,7 @@ const INITIAL_DATA = [
   { id: '4', title: 'Parallel Worlds', chapter: 'Chapter 1: Discovery', progress: '10%' },
 ];
 
-export default function BookmarksScreen() {
+export default function BookmarksScreen({ navigation }: { navigation: any }) {
   const [bookmarks, setBookmarks] = useState(INITIAL_DATA);
 
   const handleRemove = (id: string) => {
@@ -32,7 +32,11 @@ export default function BookmarksScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.headerText}>My Bookmarks</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <FlatList
@@ -52,10 +56,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
   },
   header: {
+    flexDirection: 'row',
     backgroundColor: '#4CAF50',
     paddingVertical: 16,
     alignItems: 'center',
     elevation: 2,
+    justifyContent: 'space-between',
   },
   headerText: {
     fontSize: 20,
@@ -106,5 +112,12 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     marginTop: 20,
+  },
+  backButton: {
+    alignItems: 'center',
+    width: 50,
+  },
+  placeholder: {
+    width: 50,
   },
 });

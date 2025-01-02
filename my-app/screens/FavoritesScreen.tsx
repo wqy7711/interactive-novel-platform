@@ -9,7 +9,7 @@ const INITIAL_DATA = [
   { id: '4', title: 'Parallel Worlds', image: 'https://placekitten.com/200/303' },
 ];
 
-export default function FavoritesScreen() {
+export default function FavoritesScreen({ navigation }: { navigation: any }) {
   const [favorites, setFavorites] = useState(INITIAL_DATA);
 
   const handleRemove = (id: string) => {
@@ -31,7 +31,11 @@ export default function FavoritesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.headerText}>My Favorites</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <FlatList
@@ -51,10 +55,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
   },
   header: {
+    flexDirection: 'row',
     backgroundColor: '#4CAF50',
     paddingVertical: 16,
     alignItems: 'center',
     elevation: 2,
+    justifyContent: 'space-between',
   },
   headerText: {
     fontSize: 20,
@@ -99,5 +105,12 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     marginTop: 20,
+  },
+  backButton: {
+    width: 50,
+    alignItems: 'center',
+  },
+  placeholder: {
+    width: 50,
   },
 });
