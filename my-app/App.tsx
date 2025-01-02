@@ -10,8 +10,31 @@ import FavoritesScreen from './screens/FavoritesScreen';
 import BookmarksScreen from './screens/BookmarksScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 
 const Stack = createNativeStackNavigator();
+const Drawer = createDrawerNavigator();
+
+function MainDrawer() {
+  return (
+    <Drawer.Navigator
+      screenOptions={{
+        drawerStyle: {
+          backgroundColor: '#f9f9f9',
+          width: 240,
+        },
+        headerShown: false,
+      }}
+    >
+      <Drawer.Screen name="Home" component={HomeScreen} />
+      <Drawer.Screen name="Read" component={ReadScreen} />
+      <Drawer.Screen name="Create" component={CreateScreen} />
+      <Drawer.Screen name="Favorites" component={FavoritesScreen} />
+      <Drawer.Screen name="Bookmarks" component={BookmarksScreen} />
+      <Drawer.Screen name="Profile" component={ProfileScreen} />
+    </Drawer.Navigator>
+  );
+}
 
 export default function App() {
   return (
@@ -35,9 +58,9 @@ export default function App() {
           options={{ title: 'Register' }} 
         />
         <Stack.Screen 
-          name="Home" 
-          component={HomeScreen} 
-          options={{ title: 'Home' }} 
+          name="MainDrawer" 
+          component={MainDrawer} 
+          options={{ headerShown: false }}
         />
         <Stack.Screen 
           name="Read" 

@@ -23,13 +23,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     </TouchableOpacity>
   );
   
+  const openDrawer = () => {
+    if (navigation.toggleDrawer) {
+      navigation.toggleDrawer();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
         <Text style={styles.headerText}>Discover Stories</Text>
-        <Ionicons name="book-outline" size={28} color="#555" />
+        <TouchableOpacity onPress={openDrawer}>
+          <Ionicons name="book-outline" size={28} color="#555" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchBar}>

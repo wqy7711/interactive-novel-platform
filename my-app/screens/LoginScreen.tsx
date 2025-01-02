@@ -13,7 +13,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     } else {
       if (role === 'user') {
         Alert.alert('Success', 'Logged in as User!');
-        navigation.navigate('Home');
+        navigation.navigate('MainDrawer');
       } else if (role === 'admin') {
         Alert.alert('Success', 'Logged in as Admin!');
         navigation.navigate('AdminDashboard');
