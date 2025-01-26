@@ -5,7 +5,9 @@ import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import ReadScreen from './screens/ReadScreen';
-import CreateScreen from './screens/CreateScreen';
+import CreateInitialScreen from './screens/CreateInitialScreen';
+import WriteStoryScreen from './screens/WriteStoryScreen';
+import BranchDesignScreen from './screens/BranchDesignScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import BookmarksScreen from './screens/BookmarksScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -28,7 +30,7 @@ function MainDrawer() {
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
       <Drawer.Screen name="Read" component={ReadScreen} />
-      <Drawer.Screen name="Create" component={CreateScreen} />
+      <Drawer.Screen name="Create" component={CreateInitialScreen} />
       <Drawer.Screen name="Favorites" component={FavoritesScreen} />
       <Drawer.Screen name="Bookmarks" component={BookmarksScreen} />
       <Drawer.Screen name="Profile" component={ProfileScreen} />
@@ -68,9 +70,19 @@ export default function App() {
           options={{ title: 'Read Story' }} 
         />
         <Stack.Screen 
-          name="Create" 
-          component={CreateScreen} 
-          options={{ title: 'Create Story' }} 
+          name="CreateInitial" 
+          component={CreateInitialScreen} 
+          options={{ title: 'Create New Story' }} 
+        />
+        <Stack.Screen 
+          name="WriteStory" 
+          component={WriteStoryScreen} 
+          options={{ title: 'Write Story' }} 
+        />
+        <Stack.Screen 
+          name="BranchDesign" 
+          component={BranchDesignScreen} 
+          options={{ title: 'Branch Design' }} 
         />
         <Stack.Screen 
           name="Favorites" 
