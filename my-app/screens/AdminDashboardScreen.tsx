@@ -1,31 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const PENDING_STORIES = [
-  { id: '1', title: 'The Time Traveler', author: 'Lucy' },
-  { id: '2', title: 'Mystic Journey', author: 'Wendy' },
-];
-
-export default function AdminDashboardScreen() {
-  const renderStoryItem = ({ item }: { item: { id: string; title: string; author: string } }) => (
-    <View style={styles.card}>
-      <View style={styles.cardContent}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.author}>By {item.author}</Text>
-      </View>
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={[styles.actionButton, styles.approveButton]} onPress={() => alert('Approved')}>
-          <Ionicons name="checkmark-circle-outline" size={24} color="#fff" />
-          <Text style={styles.actionText}>Approve</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.rejectButton]} onPress={() => alert('Rejected')}>
-          <Ionicons name="close-circle-outline" size={24} color="#fff" />
-          <Text style={styles.actionText}>Reject</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+export default function AdminDashboardScreen({ navigation }: { navigation: any }) {
+  const [username, setUsername] = useState('');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -33,131 +11,117 @@ export default function AdminDashboardScreen() {
         <Text style={styles.headerText}>Admin Dashboard</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pending Stories</Text>
-        <FlatList
-          data={PENDING_STORIES}
-          keyExtractor={(item) => item.id}
-          renderItem={renderStoryItem}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={<Text style={styles.emptyText}>No pending stories.</Text>}
-        />
+      <View style={styles.infoBox}>
+        <Text style={styles.welcomeText}>
+          {username ? `Welcome, ${username}` : "Welcome, Administrator"}
+        </Text>
+        <Text style={styles.subText}>Manage platform content efficiently</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Manage Comments</Text>
-        <TouchableOpacity style={styles.sectionButton} onPress={() => alert('Manage Comments')}>
-          <Ionicons name="chatbubble-outline" size={24} color="#fff" />
-          <Text style={styles.sectionButtonText}>Go to Comments</Text>
+      <View style={styles.menu}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('AdminProfileScreen')}
+        >
+          <Ionicons name="person-outline" size={28} color="#4CAF50" />
+          <Text style={styles.menuText}>Personal Information</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('StoryReview')}
+        >
+          <Ionicons name="book-outline" size={28} color="#4CAF50" />
+          <Text style={styles.menuText}>Story Review</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('UserManagement')}
+        >
+          <Ionicons name="people-outline" size={28} color="#4CAF50" />
+          <Text style={styles.menuText}>User Management</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('CommentReview')}
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={28} color="#4CAF50" />
+          <Text style={styles.menuText}>Comment Review</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Manage Users</Text>
-        <TouchableOpacity style={styles.sectionButton} onPress={() => alert('Manage Users')}>
-          <Ionicons name="person-outline" size={24} color="#fff" />
-          <Text style={styles.sectionButtonText}>Go to Users</Text>
-        </TouchableOpacity>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Version 1.0.0</Text>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-  },
+  container: { flex: 1, backgroundColor: '#f9f9f9', justifyContent: 'space-between' },
+
   header: {
     backgroundColor: '#4CAF50',
-    paddingVertical: 16,
+    padding: 16,
     alignItems: 'center',
-    elevation: 2,
   },
+
   headerText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
   },
-  section: {
-    marginTop: 20,
-    paddingHorizontal: 16,
+
+  infoBox: {
+    alignItems: 'center',
+    paddingVertical: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
+
+  welcomeText: {
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  listContainer: {
+
+  subText: {
+    fontSize: 18,
+    color: '#666',
     marginBottom: 20,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    elevation: 2,
-    padding: 12,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardContent: {
+
+  menu: {
     flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
-  title: {
+
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 10,
+    elevation: 2,
+  },
+
+  menuText: {
+    marginLeft: 16,
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },
-  author: {
-    fontSize: 14,
-    color: '#666',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionButton: {
-    flexDirection: 'row',
+
+  footer: {
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    elevation: 2,
+    padding: 12,
   },
-  approveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  rejectButton: {
-    backgroundColor: '#E57373',
-  },
-  actionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginLeft: 5,
-  },
-  sectionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    elevation: 2,
-    marginBottom: 10,
-  },
-  sectionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  emptyText: {
-    fontSize: 14,
+
+  footerText: {
+    fontSize: 12,
     color: '#999',
-    textAlign: 'center',
-    marginTop: 10,
   },
 });
