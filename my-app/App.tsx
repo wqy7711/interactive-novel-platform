@@ -13,6 +13,7 @@ import BookmarksScreen from './screens/BookmarksScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
 import AdminProfileScreen from './screens/AdminProfileScreen';
+import StoryReviewScreen from './screens/StoryReviewScreen';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
 const Stack = createNativeStackNavigator();
@@ -109,6 +110,11 @@ export default function App() {
           name="AdminProfile" 
           component={AdminProfileScreen} 
           options={{ title: 'Admin Profile' }} 
+        />
+        <Stack.Screen 
+          name="StoryReview" 
+          component={StoryReviewScreen} 
+          options={{ title: 'Story Review' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
