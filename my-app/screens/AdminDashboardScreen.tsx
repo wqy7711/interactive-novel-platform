@@ -21,7 +21,7 @@ export default function AdminDashboardScreen({ navigation }: { navigation: any }
       <View style={styles.menu}>
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => navigation.navigate('AdminProfileScreen')}
+          onPress={() => navigation.navigate('AdminProfile')}
         >
           <Ionicons name="person-outline" size={28} color="#4CAF50" />
           <Text style={styles.menuText}>Personal Information</Text>
