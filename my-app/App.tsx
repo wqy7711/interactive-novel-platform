@@ -15,6 +15,7 @@ import AdminDashboardScreen from './screens/AdminDashboardScreen';
 import AdminProfileScreen from './screens/AdminProfileScreen';
 import StoryReviewScreen from './screens/StoryReviewScreen';
 import UserManagementScreen from './screens/UserManagementScreen';
+import CommentReviewScreen from './screens/CommentReviewScreen';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
 const Stack = createNativeStackNavigator();
@@ -121,6 +122,11 @@ export default function App() {
           name="UserManagement" 
           component={UserManagementScreen} 
           options={{ title: 'User Management' }} 
+        />
+        <Stack.Screen 
+          name="CommentReview" 
+          component={CommentReviewScreen} 
+          options={{ title: 'Comment Review' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
