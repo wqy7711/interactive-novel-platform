@@ -35,7 +35,7 @@ export default function WriteStoryScreen({ navigation }: { navigation: any }) {
           <Text style={styles.buttonText}>Upload Local Image</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button} onPress={() => alert('AI Image Generated')}>
+        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('AIIllustration')}>
           <Text style={styles.buttonText}>Generate AI Image</Text>
         </TouchableOpacity>
       </View>
