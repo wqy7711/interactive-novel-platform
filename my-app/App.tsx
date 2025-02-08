@@ -16,6 +16,7 @@ import AdminProfileScreen from './screens/AdminProfileScreen';
 import StoryReviewScreen from './screens/StoryReviewScreen';
 import UserManagementScreen from './screens/UserManagementScreen';
 import CommentReviewScreen from './screens/CommentReviewScreen';
+import AIIllustrationScreen from './screens/AIIllustrationScreen';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
 const Stack = createNativeStackNavigator();
@@ -127,6 +128,11 @@ export default function App() {
           name="CommentReview" 
           component={CommentReviewScreen} 
           options={{ title: 'Comment Review' }} 
+        />
+        <Stack.Screen 
+          name="AIIllustration" 
+          component={AIIllustrationScreen} 
+          options={{ title: 'AI Illustration' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>
