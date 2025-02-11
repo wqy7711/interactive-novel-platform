@@ -10,7 +10,7 @@ const StorySchema = new mongoose.Schema({
   description: { type: String },
   coverImage: { type: String },
   authorId: { type: String, required: true },
-  status: { type: String, enum: ["draft", "published"], default: "draft" },
+  status: { type: String, enum: ["draft", "pending", "approved", "rejected"], default: "draft" },
   branches: [BranchSchema],
 }, { timestamps: true });
 
