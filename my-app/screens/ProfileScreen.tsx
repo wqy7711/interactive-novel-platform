@@ -1,8 +1,85 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image,Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../services/api';
 
 export default function ProfileScreen({ navigation }: { navigation: any }) {
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const user = await api.auth.getCurrentUser();
+        if (user) {
+          setUserInfo(user);
+        } else {
+          Alert.alert('Session Expired', 'Please login again');
+          navigation.navigate('Login');
+        }
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+        console.error('Error fetching user info:', error);
+        Alert.alert(
+          'Error',
+          'Failed to load profile information'
+        );
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Confirm Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Logout',
+          onPress: async () => {
+            try {
+              await api.auth.logout();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const navigateToMyStories = () => {
+    Alert.alert('My Stories', 'Navigate to My Stories screen');
+  };
+
+  const navigateToBookmarks = () => {
+    navigation.navigate('Bookmarks');
+  };
+
+  const handleEditProfile = () => {
+    Alert.alert('Edit Profile', 'Navigate to Edit Profile screen');
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.profileHeader}>
@@ -10,30 +87,30 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
           <Ionicons name="arrow-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Image
-          source={{ uri: 'https://placekitten.com/150/150' }}
+          source={{ uri: userInfo?.avatar || 'https://placekitten.com/150/150' }}
           style={styles.avatar}
         />
-        <Text style={styles.userName}>QiYi Wang</Text>
-        <Text style={styles.userEmail}>wangqiyi651@gmail.com</Text>
+        <Text style={styles.userName}>{userInfo?.username || 'User'}</Text>
+        <Text style={styles.userEmail}>{userInfo?.email || 'user@example.com'}</Text>
       </View>
 
       <View style={styles.optionList}>
-        <TouchableOpacity style={styles.optionItem} onPress={() => alert('Modify Profile')}>
+        <TouchableOpacity style={styles.optionItem} onPress={handleEditProfile}>
           <Ionicons name="person-outline" size={24} color="#4CAF50" />
           <Text style={styles.optionText}>Edit Profile</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.optionItem} onPress={() => alert('My Stories')}>
+        <TouchableOpacity style={styles.optionItem} onPress={navigateToMyStories}>
           <Ionicons name="book-outline" size={24} color="#4CAF50" />
           <Text style={styles.optionText}>My Stories</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.optionItem} onPress={() => alert('Bookmarks')}>
+        <TouchableOpacity style={styles.optionItem} onPress={navigateToBookmarks}>
           <Ionicons name="bookmark-outline" size={24} color="#4CAF50" />
           <Text style={styles.optionText}>My Bookmarks</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.optionItem} onPress={() => alert('Logout')}>
+        <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="#E57373" />
           <Text style={[styles.optionText, { color: '#E57373' }]}>Logout</Text>
         </TouchableOpacity>
@@ -46,6 +123,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9f9f9',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
   profileHeader: {
     alignItems: 'center',

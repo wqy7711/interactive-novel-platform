@@ -1,25 +1,45 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../services/api';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
   const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password || !role) {
       Alert.alert('Error', 'Please fill in all fields and select a role.');
-    } else {
-      if (role === 'user') {
-        Alert.alert('Success', 'Logged in as User!');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const user = await api.auth.login({
+        email,
+        password,
+        role
+      });
+      
+      setLoading(false);
+      
+      if (user.role === 'user') {
         navigation.navigate('MainDrawer');
-      } else if (role === 'admin') {
-        Alert.alert('Success', 'Logged in as Admin!');
+      } else if (user.role === 'admin') {
         navigation.navigate('AdminDashboard');
       }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(
+        'Login Failed', 
+        error instanceof Error ? error.message : 'An unknown error occurred during login'
+      );
     }
   };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -32,13 +52,19 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
           style={[styles.roleButton, role === 'user' && styles.selectedRole]}
           onPress={() => setRole('user')}
         >
-          <Text style={styles.roleText}>User</Text>
+          <Text style={[
+            styles.roleText, 
+            role === 'user' && { color: '#fff' }
+          ]}>User</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.roleButton, role === 'admin' && styles.selectedRole]}
           onPress={() => setRole('admin')}
         >
-          <Text style={styles.roleText}>Admin</Text>
+          <Text style={[
+            styles.roleText, 
+            role === 'admin' && { color: '#fff' }
+          ]}>Admin</Text>
         </TouchableOpacity>
       </View>
 
@@ -60,8 +86,16 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
         />
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.footer}>
@@ -130,6 +164,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 8,
     marginTop: 10,
+    minWidth: 120,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',

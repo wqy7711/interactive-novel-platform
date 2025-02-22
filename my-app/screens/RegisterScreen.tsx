@@ -1,22 +1,54 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import api from '../services/api';
 export default function RegisterScreen({ navigation }: { navigation: any }) {
   const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    if (!username || !email || !password || !confirmPassword) {
+  const handleRegister = async () => {
+    if (!username || !email || !password || !confirmPassword || !role) {
       Alert.alert('Error', 'Please fill in all fields.');
-    } else if (password !== confirmPassword) {
+      return;
+    } 
+    
+    if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match.');
-    } else {
-      Alert.alert('Success', 'Account registered successfully!');
-      navigation.navigate('Login');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const response = await api.auth.register({
+        username,
+        email,
+        password,
+        role
+      });
+      
+      setLoading(false);
+      
+      Alert.alert(
+        'Success', 
+        'Account registered successfully!',
+        [
+          {
+            text: 'Login',
+            onPress: () => navigation.navigate('Login')
+          }
+        ]
+      );
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(
+        'Registration Failed', 
+        error instanceof Error ? error.message : 'An unknown error occurred during registration'
+      );
     }
   };
 
@@ -33,13 +65,19 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
             style={[styles.roleButton, role === 'user' && styles.selectedRole]}
             onPress={() => setRole('user')}
           >
-            <Text style={styles.roleText}>User</Text>
+            <Text style={[
+              styles.roleText, 
+              role === 'user' && { color: '#fff' }
+            ]}>User</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.roleButton, role === 'admin' && styles.selectedRole]}
             onPress={() => setRole('admin')}
           >
-            <Text style={styles.roleText}>Admin</Text>
+            <Text style={[
+              styles.roleText, 
+              role === 'admin' && { color: '#fff' }
+            ]}>Admin</Text>
           </TouchableOpacity>
         </View>
 
@@ -74,8 +112,16 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
           />
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Register</Text>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Register</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.footer}>
@@ -99,6 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 30
   },
   header: {
     alignItems: 'center',
@@ -151,6 +198,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: '100%',
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center'
   },
   buttonText: {
     color: '#fff',

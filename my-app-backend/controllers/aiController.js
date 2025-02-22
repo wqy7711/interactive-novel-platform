@@ -1,10 +1,9 @@
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 require("dotenv").config();
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 exports.generateImage = async (req, res) => {
   try {
@@ -14,13 +13,13 @@ exports.generateImage = async (req, res) => {
       return res.status(400).json({ error: "Prompt is required" });
     }
 
-    const response = await openai.createImage({
+    const response = await openai.images.generate({
       prompt: prompt,
       n: 1,
       size: "1024x1024",
     });
 
-    const imageUrl = response.data.data[0].url;
+    const imageUrl = response.data[0].url;
     res.json({ imageUrl });
   } catch (error) {
     console.error("OpenAI API Error:", error);
