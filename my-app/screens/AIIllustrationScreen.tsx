@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Image,ActivityIndicator,Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 export default function AIIllustrationScreen({ navigation, route }: { navigation: any, route: any }) {
   const [description, setDescription] = useState('');
@@ -19,7 +19,7 @@ export default function AIIllustrationScreen({ navigation, route }: { navigation
     try {
       setGenerating(true);
       
-      const imageUrl = await api.ai.generateImage(description);
+      const imageUrl = await services.ai.generateImage(description);
       
       setImageUri(imageUrl);
       setGenerating(false);
@@ -44,7 +44,7 @@ export default function AIIllustrationScreen({ navigation, route }: { navigation
 
     if (storyId) {
       try {
-        const updatedStory = await api.story.updateStory(storyId, {
+        const updatedStory = await services.story.updateStory(storyId, {
           illustrationUrl: imageUri
         });
         

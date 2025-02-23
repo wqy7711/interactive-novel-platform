@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, Image, StyleSheet, SafeAreaView, TouchableOpacity, Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 interface FavoriteItem {
   _id: string;
@@ -20,7 +20,7 @@ export default function FavoritesScreen({ navigation }: { navigation: any }) {
 
   const initData = async () => {
     try {
-      const user = await api.auth.getCurrentUser();
+      const user = await services.auth.getCurrentUser();
       if (user) {
         setUserId(user.uid);
         await fetchFavorites(user.uid);
@@ -38,7 +38,7 @@ export default function FavoritesScreen({ navigation }: { navigation: any }) {
 
   const fetchFavorites = async (uid: string) => {
     try {
-      const response = await api.favorite.getFavorites(uid);
+      const response = await services.favorite.getFavorites(uid);
       setFavorites(response);
       setLoading(false);
     } catch (error) {
@@ -61,7 +61,7 @@ export default function FavoritesScreen({ navigation }: { navigation: any }) {
           text: 'Remove',
           onPress: async () => {
             try {
-              await api.favorite.removeFavorite(favoriteId);
+              await services.favorite.removeFavorite(favoriteId);
               setFavorites(prevFavorites => 
                 prevFavorites.filter(item => item._id !== favoriteId)
               );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 interface StoryBranch {
   _id: string;
@@ -32,10 +32,10 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
   const fetchStory = async () => {
     try {
       setLoading(true);
-      const storyData = await api.story.getStoryById(storyId);
+      const storyData = await services.story.getStoryById(storyId);
       setStory(storyData);
       
-      const branches = await api.story.getBranches(storyId);
+      const branches = await services.story.getBranches(storyId);
       
       if (branchId) {
         const branch = branches.find((b: StoryBranch) => b._id === branchId);
@@ -60,7 +60,7 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
     try {
       if (!story) return;
       
-      const branches = await api.story.getBranches(story._id);
+      const branches = await services.story.getBranches(story._id);
       const nextBranch = branches.find((b: StoryBranch) => b._id === nextBranchId);
       
       if (nextBranch) {
@@ -89,13 +89,13 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
     try {
       if (!story || !currentBranch) return;
       
-      const user = await api.auth.getCurrentUser();
+      const user = await services.auth.getCurrentUser();
       if (!user) {
         Alert.alert('Login Required', 'Please login to bookmark stories');
         return;
       }
       
-      await api.bookmark.addBookmark({
+      await services.bookmark.addBookmark({
         userId: user.uid,
         storyId: story._id,
         chapter: currentBranch._id,

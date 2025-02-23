@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity,Alert,ActivityIndicator,ScrollView,Image} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 export default function WriteStoryScreen({ navigation, route }: { navigation: any, route: any }) {
   const [mainStory, setMainStory] = useState('');
@@ -29,7 +29,7 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
   const fetchStoryData = async (id: string) => {
     try {
       setLoading(true);
-      const story = await api.story.getStoryById(id);
+      const story = await services.story.getStoryById(id);
       setStoryData(story);
       
       if (story.branches && story.branches.length > 0) {
@@ -59,7 +59,7 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
       
       if (storyData && storyData.branches && storyData.branches.length > 0) {
         const firstBranchId = storyData.branches[0]._id;
-        updatedStory = await api.story.updateStory(storyId, {
+        updatedStory = await services.story.updateStory(storyId, {
           branches: [
             {
               _id: firstBranchId,
@@ -74,12 +74,12 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
           text: mainStory,
           choices: []
         };
-        await api.story.addBranch(storyId, branchData);
-        updatedStory = await api.story.getStoryById(storyId);
+        await services.story.addBranch(storyId, branchData);
+        updatedStory = await services.story.getStoryById(storyId);
       }
       
       if (illustrationUrl) {
-        updatedStory = await api.story.updateStory(storyId, {
+        updatedStory = await services.story.updateStory(storyId, {
           illustrationUrl
         });
       }
@@ -198,7 +198,7 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
                   text: 'Submit',
                   onPress: async () => {
                     try {
-                      await api.story.updateStory(storyId!, { status: 'pending' });
+                      await services.story.updateStory(storyId!, { status: 'pending' });
                       Alert.alert('Success', 'Story submitted for review');
                       navigation.navigate('Home');
                     } catch (error) {

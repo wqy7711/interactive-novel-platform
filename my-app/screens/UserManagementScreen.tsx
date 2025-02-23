@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity,Alert,ActivityIndicator} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 interface User {
   _id: string;
@@ -19,7 +19,7 @@ export default function UserManagementScreen({ navigation }: { navigation: any }
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.admin.getUsers();
+      const response = await services.admin.getUsers();
       setUsers(response);
       setLoading(false);
     } catch (error) {
@@ -63,7 +63,7 @@ export default function UserManagementScreen({ navigation }: { navigation: any }
 
   const handleBlockUser = async (user: User) => {
     try {
-      await api.admin.blockUser(user._id);
+      await services.admin.blockUser(user._id);
       Alert.alert('Success', `User ${user.username} has been blocked`);
       fetchUsers();
     } catch (error) {
@@ -74,7 +74,7 @@ export default function UserManagementScreen({ navigation }: { navigation: any }
 
   const handleUnblockUser = async (user: User) => {
     try {
-      await api.admin.unblockUser(user._id);
+      await services.admin.unblockUser(user._id);
       Alert.alert('Success', `User ${user.username} has been unblocked`);
       fetchUsers();
     } catch (error) {
@@ -97,7 +97,7 @@ export default function UserManagementScreen({ navigation }: { navigation: any }
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.admin.deleteUser(user._id);
+              await services.admin.deleteUser(user._id);
               setUsers(prevUsers => prevUsers.filter(u => u._id !== user._id));
               Alert.alert('Success', `User ${user.username} has been deleted`);
             } catch (error) {

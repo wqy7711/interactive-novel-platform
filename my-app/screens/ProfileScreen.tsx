@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image,Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 export default function ProfileScreen({ navigation }: { navigation: any }) {
   const [userInfo, setUserInfo] = useState<any>(null);
@@ -10,7 +10,7 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const user = await api.auth.getCurrentUser();
+        const user = await services.auth.getCurrentUser();
         if (user) {
           setUserInfo(user);
         } else {
@@ -44,7 +44,7 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
           text: 'Logout',
           onPress: async () => {
             try {
-              await api.auth.logout();
+              await services.auth.logout();
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],

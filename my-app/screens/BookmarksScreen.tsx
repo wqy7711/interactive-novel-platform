@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity, Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 interface BookmarkItem {
   _id: string;
@@ -21,7 +21,7 @@ export default function BookmarksScreen({ navigation }: { navigation: any }) {
 
   const initData = async () => {
     try {
-      const user = await api.auth.getCurrentUser();
+      const user = await services.auth.getCurrentUser();
       if (user) {
         setUserId(user.uid);
         await fetchBookmarks(user.uid);
@@ -39,7 +39,7 @@ export default function BookmarksScreen({ navigation }: { navigation: any }) {
 
   const fetchBookmarks = async (uid: string) => {
     try {
-      const response = await api.bookmark.getBookmarks(uid);
+      const response = await services.bookmark.getBookmarks(uid);
       setBookmarks(response);
       setLoading(false);
     } catch (error) {
@@ -62,7 +62,7 @@ export default function BookmarksScreen({ navigation }: { navigation: any }) {
           text: 'Remove',
           onPress: async () => {
             try {
-              await api.bookmark.removeBookmark(bookmarkId);
+              await services.bookmark.removeBookmark(bookmarkId);
               setBookmarks(prevBookmarks => 
                 prevBookmarks.filter(item => item._id !== bookmarkId)
               );

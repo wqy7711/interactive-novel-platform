@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView,ActivityIndicator,Alert} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 import exampleImage from '../assets/image/example.png';
 
 interface StoryItem {
@@ -20,7 +20,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const fetchStories = async () => {
     try {
-      const response = await api.story.getStories();
+      const response = await services.story.getStories();
       const approvedStories = response.filter((story: any) => story.status === 'approved');
       setStories(approvedStories);
       setFilteredStories(approvedStories);

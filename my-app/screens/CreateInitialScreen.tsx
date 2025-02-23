@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Alert,ActivityIndicator,ScrollView,Image} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import api from '../services/api';
+import services from '../services';
 
 export default function CreateInitialScreen({ navigation }: { navigation: any }) {
   const [title, setTitle] = useState('');
@@ -19,7 +19,7 @@ export default function CreateInitialScreen({ navigation }: { navigation: any })
     try {
       setLoading(true);
       
-      const user = await api.auth.getCurrentUser();
+      const user = await services.auth.getCurrentUser();
       if (!user) {
         setLoading(false);
         Alert.alert('Authentication Error', 'Please login to create a story');
@@ -35,7 +35,7 @@ export default function CreateInitialScreen({ navigation }: { navigation: any })
         status: 'draft'
       };
 
-      const response = await api.story.createStory(storyData);
+      const response = await services.story.createStory(storyData);
       
       setLoading(false);
       

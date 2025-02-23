@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 export default function LoginScreen({ navigation }: { navigation: any }) {
   const [role, setRole] = useState<'user' | 'admin' | null>(null);
@@ -18,7 +18,7 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
     try {
       setLoading(true);
       
-      const user = await api.auth.login({
+      const user = await services.auth.login({
         email,
         password,
         role

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://64.43.50.130:5000/api';
 
 const fetchApi = async (endpoint, options = {}) => {
   try {
@@ -44,14 +44,4 @@ export const api = {
     body: JSON.stringify(data) 
   }),
   delete: (endpoint) => fetchApi(endpoint, { method: 'DELETE' }),
-};
-
-export default {
-  auth: require('./authService').default,
-  story: require('./storyService').default,
-  bookmark: require('./bookmarkService').default,
-  favorite: require('./favoriteService').default,
-  comment: require('./commentService').default,
-  admin: require('./adminService').default,
-  ai: require('./aiService').default,
 };

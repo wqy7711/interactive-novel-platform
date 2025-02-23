@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList,ActivityIndicator,Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 
 interface Story {
   _id: string;
@@ -19,7 +19,7 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
   const fetchPendingStories = async () => {
     try {
       setLoading(true);
-      const response = await api.admin.getPendingStories();
+      const response = await services.admin.getPendingStories();
       setStories(response);
       setLoading(false);
     } catch (error) {
@@ -33,7 +33,7 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
 
   const handleApprove = async (storyId: string) => {
     try {
-      await api.admin.approveStory(storyId);
+      await services.admin.approveStory(storyId);
       setStories(prevStories => prevStories.filter(story => story._id !== storyId));
       Alert.alert('Success', 'Story approved');
     } catch (error) {
@@ -46,7 +46,7 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
 
   const handleReject = async (storyId: string) => {
     try {
-      await api.admin.rejectStory(storyId);
+      await services.admin.rejectStory(storyId);
       setStories(prevStories => prevStories.filter(story => story._id !== storyId));
       Alert.alert('Success', 'Story rejected');
     } catch (error) {

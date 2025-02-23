@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from './api';
-import { firebase } from '../config/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword,signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 const authService = {
   register: async (userData) => {
     try {
-      const userCredential = await firebase.auth().createUserWithEmailAndPassword(
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
         userData.email, 
         userData.password
       );
@@ -28,7 +30,8 @@ const authService = {
 
   login: async (credentials) => {
     try {
-      const userCredential = await firebase.auth().signInWithEmailAndPassword(
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
         credentials.email, 
         credentials.password
       );
@@ -81,7 +84,8 @@ const authService = {
 
   logout: async () => {
     try {
-      await firebase.auth().signOut();
+      await signOut(auth);
+      
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('userInfo');
       

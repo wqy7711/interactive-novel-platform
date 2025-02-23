@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView,ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import services from '../services';
 export default function RegisterScreen({ navigation }: { navigation: any }) {
   const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [username, setUsername] = useState('');
@@ -24,7 +24,7 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
     try {
       setLoading(true);
       
-      const response = await api.auth.register({
+      const response = await services.auth.register({
         username,
         email,
         password,
