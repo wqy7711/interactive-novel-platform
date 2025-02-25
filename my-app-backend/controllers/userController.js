@@ -2,18 +2,17 @@ const admin = require("../config/firebase");
 const User = require("../models/User");
 
 exports.registerUser = async (req, res) => {
-  const { email, password, username, role } = req.body;
+  const { uid, email, username, role } = req.body;
 
   try {
-    const userRecord = await admin.auth().createUser({
-      email,
-      password,
-      displayName: username,
-    });
+    const existingUser = await User.findOne({ uid });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists in database" });
+    }
 
     const newUser = new User({
-      uid: userRecord.uid,
-      email: userRecord.email,
+      uid,
+      email,
       username,
       role: role || "user",
     });
@@ -66,7 +65,6 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     await User.findOneAndDelete({ uid: req.params.id });
-    await admin.auth().deleteUser(req.params.id);
     res.json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });

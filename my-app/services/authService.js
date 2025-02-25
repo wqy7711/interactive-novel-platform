@@ -1,7 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from './api';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword,signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile 
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 
 const authService = {
   register: async (userData) => {
@@ -12,16 +17,24 @@ const authService = {
         userData.password
       );
       
-      const uid = userCredential.user.uid;
-      
-      const response = await api.post('/users/register', {
-        uid,
-        email: userData.email,
-        username: userData.username,
-        role: userData.role || 'user'
+      await updateProfile(userCredential.user, {
+        displayName: userData.username
       });
       
-      return response;
+      const userDoc = {
+        uid: userCredential.user.uid,
+        email: userData.email,
+        username: userData.username,
+        role: userData.role || 'user',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      await setDoc(doc(db, "users", userCredential.user.uid), userDoc);
+      
+      await AsyncStorage.setItem('userInfo', JSON.stringify(userDoc));
+      
+      return { message: "User registered successfully", user: userDoc };
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -36,19 +49,30 @@ const authService = {
         credentials.password
       );
       
-      const uid = userCredential.user.uid;
+      const userDocRef = doc(db, "users", userCredential.user.uid);
+      const userSnapshot = await getDoc(userDocRef);
       
-      const response = await api.post('/users/login', { uid });
+      if (!userSnapshot.exists()) {
+        throw new Error('User data not found');
+      }
       
-      if (response.user.role !== credentials.role) {
+      const userData = userSnapshot.data();
+      
+      if (userData.role !== credentials.role) {
         throw new Error('Role mismatch');
       }
       
       const token = await userCredential.user.getIdToken();
       await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+      await AsyncStorage.setItem('userInfo', JSON.stringify({
+        ...userData,
+        uid: userCredential.user.uid
+      }));
       
-      return response.user;
+      return {
+        ...userData,
+        uid: userCredential.user.uid
+      };
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -67,15 +91,21 @@ const authService = {
 
   updateProfile: async (uid, userData) => {
     try {
-      const response = await api.put(`/users/${uid}`, userData);
+      const userRef = doc(db, "users", uid);
+      const updateData = {
+        ...userData,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await updateDoc(userRef, updateData);
       
       const currentUser = await authService.getCurrentUser();
       if (currentUser) {
-        const updatedUser = { ...currentUser, ...userData };
+        const updatedUser = { ...currentUser, ...updateData };
         await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
       }
       
-      return response;
+      return { message: "Profile updated successfully" };
     } catch (error) {
       console.error('Failed to update profile:', error);
       throw error;
@@ -85,10 +115,8 @@ const authService = {
   logout: async () => {
     try {
       await signOut(auth);
-      
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('userInfo');
-      
       return { success: true };
     } catch (error) {
       console.error('Logout failed:', error);
