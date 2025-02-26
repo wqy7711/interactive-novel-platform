@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView,ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
+
 export default function RegisterScreen({ navigation }: { navigation: any }) {
   const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [username, setUsername] = useState('');
@@ -21,6 +22,17 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password should be at least 6 characters long.');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -33,22 +45,38 @@ export default function RegisterScreen({ navigation }: { navigation: any }) {
       
       setLoading(false);
       
-      Alert.alert(
-        'Success', 
-        'Account registered successfully!',
-        [
-          {
-            text: 'Login',
-            onPress: () => navigation.navigate('Login')
-          }
-        ]
-      );
+      if (response && typeof response === 'object' && 'message' in response) {
+        Alert.alert(
+          'Success', 
+          response.message || 'Account registered successfully!',
+          [
+            {
+              text: 'Login',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Success', 
+          'Account registered successfully!',
+          [
+            {
+              text: 'Login',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+      }
     } catch (error) {
       setLoading(false);
-      Alert.alert(
-        'Registration Failed', 
-        error instanceof Error ? error.message : 'An unknown error occurred during registration'
-      );
+      
+      let errorMessage = 'An unknown error occurred during registration';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
     }
   };
 

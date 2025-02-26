@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert,ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
 
@@ -15,6 +15,12 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -26,17 +32,24 @@ export default function LoginScreen({ navigation }: { navigation: any }) {
       
       setLoading(false);
       
-      if (user.role === 'user') {
-        navigation.navigate('MainDrawer');
-      } else if (user.role === 'admin') {
-        navigation.navigate('AdminDashboard');
+      if (user && typeof user === 'object' && 'role' in user) {
+        if (user.role === 'user') {
+          navigation.navigate('MainDrawer');
+        } else if (user.role === 'admin') {
+          navigation.navigate('AdminDashboard');
+        }
+      } else {
+        Alert.alert('Login Error', 'Invalid user data received');
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert(
-        'Login Failed', 
-        error instanceof Error ? error.message : 'An unknown error occurred during login'
-      );
+      
+      let errorMessage = 'An unknown error occurred during login';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
     }
   };
 

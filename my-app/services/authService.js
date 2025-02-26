@@ -7,10 +7,15 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { isValidEmail, handleAuthError } from './firebaseHelpers';
 
 const authService = {
   register: async (userData) => {
     try {
+      if (!isValidEmail(userData.email)) {
+        throw { code: 'auth/invalid-email' };
+      }
+      
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         userData.email, 
@@ -37,12 +42,16 @@ const authService = {
       return { message: "User registered successfully", user: userDoc };
     } catch (error) {
       console.error('Registration failed:', error);
-      throw error;
+      throw new Error(handleAuthError(error));
     }
   },
 
   login: async (credentials) => {
     try {
+      if (!isValidEmail(credentials.email)) {
+        throw { code: 'auth/invalid-email' };
+      }
+      
       const userCredential = await signInWithEmailAndPassword(
         auth,
         credentials.email, 
@@ -50,39 +59,79 @@ const authService = {
       );
       
       const userDocRef = doc(db, "users", userCredential.user.uid);
-      const userSnapshot = await getDoc(userDocRef);
       
-      if (!userSnapshot.exists()) {
-        throw new Error('User data not found');
+      try {
+        const userSnapshot = await getDoc(userDocRef);
+        
+        if (!userSnapshot.exists()) {
+          const basicUserDoc = {
+            uid: userCredential.user.uid,
+            email: credentials.email,
+            username: userCredential.user.displayName || credentials.email.split('@')[0],
+            role: credentials.role || 'user',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          await setDoc(userDocRef, basicUserDoc);
+          
+          const token = await userCredential.user.getIdToken();
+          await AsyncStorage.setItem('authToken', token);
+          await AsyncStorage.setItem('userInfo', JSON.stringify(basicUserDoc));
+          
+          return basicUserDoc;
+        }
+        
+        const userData = userSnapshot.data();
+        
+        if (!userData.role) {
+          userData.role = 'user';
+          await updateDoc(userDocRef, { role: 'user' });
+        }
+        
+        if (userData.role !== credentials.role) {
+          throw new Error('Role mismatch');
+        }
+        
+        const token = await userCredential.user.getIdToken();
+        const userInfo = {
+          ...userData,
+          uid: userCredential.user.uid
+        };
+        
+        await AsyncStorage.setItem('authToken', token);
+        await AsyncStorage.setItem('userInfo', JSON.stringify(userInfo));
+        
+        return userInfo;
+      } catch (firestoreError) {
+        console.error('Error getting user data from Firestore:', firestoreError);
+        
+        const basicUserInfo = {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email || '',
+          username: userCredential.user.displayName || (userCredential.user.email ? userCredential.user.email.split('@')[0] : 'User'),
+          role: credentials.role || 'user'
+        };
+        
+        await AsyncStorage.setItem('userInfo', JSON.stringify(basicUserInfo));
+        return basicUserInfo;
       }
-      
-      const userData = userSnapshot.data();
-      
-      if (userData.role !== credentials.role) {
-        throw new Error('Role mismatch');
-      }
-      
-      const token = await userCredential.user.getIdToken();
-      await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userInfo', JSON.stringify({
-        ...userData,
-        uid: userCredential.user.uid
-      }));
-      
-      return {
-        ...userData,
-        uid: userCredential.user.uid
-      };
     } catch (error) {
       console.error('Login failed:', error);
-      throw error;
+      throw new Error(handleAuthError(error));
     }
   },
 
   getCurrentUser: async () => {
     try {
       const userInfo = await AsyncStorage.getItem('userInfo');
-      return userInfo ? JSON.parse(userInfo) : null;
+      if (!userInfo) return null;
+      
+      const user = JSON.parse(userInfo);
+      if (!user.role) {
+        user.role = 'user';
+      }
+      return user;
     } catch (error) {
       console.error('Failed to get user info:', error);
       return null;
@@ -102,6 +151,9 @@ const authService = {
       const currentUser = await authService.getCurrentUser();
       if (currentUser) {
         const updatedUser = { ...currentUser, ...updateData };
+        if (!updatedUser.role) {
+          updatedUser.role = currentUser.role || 'user';
+        }
         await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
       }
       
