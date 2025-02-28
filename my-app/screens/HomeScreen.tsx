@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView,ActivityIndicator,Alert} from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
@@ -7,8 +7,11 @@ import exampleImage from '../assets/image/example.png';
 
 interface StoryItem {
   _id: string;
-  title: string;
-  coverImage: string;
+  title?: string;
+  coverImage?: string;
+  description?: string;
+  authorId?: string;
+  status?: string;
 }
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
@@ -21,7 +24,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const fetchStories = async () => {
     try {
       const response = await services.story.getStories();
-      const approvedStories = response.filter((story: any) => story.status === 'approved');
+      const approvedStories = response
+        .filter((story: any) => story.status === 'approved')
+        .map((story: any) => ({
+          _id: story._id,
+          title: story.title || 'Untitled',
+          coverImage: story.coverImage || '',
+          description: story.description,
+          authorId: story.authorId,
+          status: story.status
+        }));
+      
       setStories(approvedStories);
       setFilteredStories(approvedStories);
       setLoading(false);
@@ -38,7 +51,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       setFilteredStories(stories);
     } else {
       const filtered = stories.filter(story => 
-        story.title.toLowerCase().includes(text.toLowerCase())
+        story.title?.toLowerCase().includes(text.toLowerCase())
       );
       setFilteredStories(filtered);
     }
@@ -73,7 +86,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         source={item.coverImage ? { uri: item.coverImage } : exampleImage} 
         style={styles.image} 
       />
-      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.title}>{item.title || 'Untitled'}</Text>
     </TouchableOpacity>
   );
 

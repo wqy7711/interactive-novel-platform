@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity,Alert,ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
 
 interface StoryBranch {
   _id: string;
-  text: string;
-  choices: {
+  text?: string;
+  choices?: {
     text: string;
     nextBranchId: string;
   }[];
@@ -14,9 +14,12 @@ interface StoryBranch {
 
 interface Story {
   _id: string;
-  title: string;
-  authorId: string;
-  branches: StoryBranch[];
+  title?: string;
+  authorId?: string;
+  branches?: StoryBranch[];
+  description?: string;
+  status?: string;
+  coverImage?: string;
 }
 
 export default function ReadScreen({ navigation, route }: { navigation: any, route: any }) {
@@ -33,14 +36,28 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
     try {
       setLoading(true);
       const storyData = await services.story.getStoryById(storyId);
-      setStory(storyData);
       
-      const branches = await services.story.getBranches(storyId);
+      const storyObj: Story = { _id: storyId };
+      
+      if (storyData) {
+        Object.assign(storyObj, storyData);
+      }
+      
+      setStory(storyObj);
+      
+      const branchesData = await services.story.getBranches(storyId);
+      
+      const branches = Array.isArray(branchesData) ? branchesData : [];
       
       if (branchId) {
-        const branch = branches.find((b: StoryBranch) => b._id === branchId);
-        setCurrentBranch(branch || branches[0]);
-      } else {
+
+        const branch = branches.find((b: any) => b._id === branchId);
+        if (branch) {
+          setCurrentBranch(branch);
+        } else if (branches.length > 0) {
+          setCurrentBranch(branches[0]);
+        }
+      } else if (branches.length > 0) {
         setCurrentBranch(branches[0]);
       }
       
@@ -61,7 +78,9 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
       if (!story) return;
       
       const branches = await services.story.getBranches(story._id);
-      const nextBranch = branches.find((b: StoryBranch) => b._id === nextBranchId);
+      const branchArray = Array.isArray(branches) ? branches : [];
+      
+      const nextBranch = branchArray.find((b: any) => b._id === nextBranchId);
       
       if (nextBranch) {
         setCurrentBranch(nextBranch);
@@ -79,7 +98,7 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
   };
 
   const updateProgress = async () => {
-    if (!story || !story.branches.length) return;
+    if (!story || !story.branches || !story.branches.length) return;
     
     const newProgress = Math.min(100, readingProgress + (100 / story.branches.length));
     setReadingProgress(newProgress);
@@ -160,7 +179,7 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
         {currentBranch ? (
           <>
             <Text style={styles.storyContent}>
-              {currentBranch.text}
+              {currentBranch.text || 'No content available for this branch.'}
             </Text>
 
             {currentBranch.choices && currentBranch.choices.length > 0 && (

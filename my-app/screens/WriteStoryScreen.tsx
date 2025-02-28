@@ -1,12 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity,Alert,ActivityIndicator,ScrollView,Image} from 'react-native';
+import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Image} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
+
+interface Branch {
+  _id: string;
+  text?: string;
+  choices?: Array<{
+    text: string;
+    nextBranchId: string;
+  }>;
+}
+
+interface StoryData {
+  _id: string;
+  title?: string;
+  description?: string;
+  branches?: Branch[];
+  status?: string;
+  coverImage?: string;
+  illustrationUrl?: string;
+  authorId?: string;
+}
+
+interface UpdateResponse {
+  message?: string;
+  story?: StoryData;
+}
 
 export default function WriteStoryScreen({ navigation, route }: { navigation: any, route: any }) {
   const [mainStory, setMainStory] = useState('');
   const [storyId, setStoryId] = useState<string | null>(null);
-  const [storyData, setStoryData] = useState<any>(null);
+  const [storyData, setStoryData] = useState<StoryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [illustrationUrl, setIllustrationUrl] = useState<string | null>(null);
@@ -30,10 +55,19 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
     try {
       setLoading(true);
       const story = await services.story.getStoryById(id);
-      setStoryData(story);
       
-      if (story.branches && story.branches.length > 0) {
-        setMainStory(story.branches[0].text || '');
+      const formattedStory: StoryData = { _id: id };
+      
+      if (story) {
+        Object.keys(story).forEach(key => {
+          (formattedStory as any)[key] = (story as any)[key];
+        });
+      }
+      
+      setStoryData(formattedStory);
+      
+      if (formattedStory.branches && formattedStory.branches.length > 0 && formattedStory.branches[0].text) {
+        setMainStory(formattedStory.branches[0].text);
       }
       
       setLoading(false);
@@ -55,38 +89,57 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
     try {
       setSaving(true);
       
-      let updatedStory;
+      let updateResult: any = null;
       
       if (storyData && storyData.branches && storyData.branches.length > 0) {
         const firstBranchId = storyData.branches[0]._id;
-        updatedStory = await services.story.updateStory(storyId, {
+        const updateData = {
           branches: [
             {
               _id: firstBranchId,
               text: mainStory,
               choices: storyData.branches[0].choices || []
             },
-            ...storyData.branches.slice(1)
+            ...(storyData.branches.slice(1) || [])
           ]
-        });
+        };
+        
+        updateResult = await services.story.updateStory(storyId, updateData);
       } else {
         const branchData = {
           text: mainStory,
           choices: []
         };
-        await services.story.addBranch(storyId, branchData);
-        updatedStory = await services.story.getStoryById(storyId);
+        const addBranchResult = await services.story.addBranch(storyId, branchData);
+        updateResult = await services.story.getStoryById(storyId);
       }
       
       if (illustrationUrl) {
-        updatedStory = await services.story.updateStory(storyId, {
+        const illustrationResult = await services.story.updateStory(storyId, {
           illustrationUrl
         });
+        
+        if (illustrationResult) {
+          updateResult = illustrationResult;
+        }
       }
       
-      setStoryData(updatedStory);
-      setSaving(false);
+      if (updateResult) {
+        if (updateResult.story && typeof updateResult.story === 'object') {
+          setStoryData(updateResult.story);
+        } 
+        else if (updateResult._id && typeof updateResult === 'object') {
+          setStoryData(updateResult);
+        }
+        else {
+          const refreshedStory = await services.story.getStoryById(storyId);
+          if (refreshedStory) {
+            setStoryData(refreshedStory);
+          }
+        }
+      }
       
+      setSaving(false);
       Alert.alert('Success', 'Story saved successfully');
     } catch (error) {
       console.error('Error saving story:', error);
@@ -198,7 +251,7 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
                   text: 'Submit',
                   onPress: async () => {
                     try {
-                      await services.story.updateStory(storyId!, { status: 'pending' });
+                      const result = await services.story.updateStory(storyId!, { status: 'pending' });
                       Alert.alert('Success', 'Story submitted for review');
                       navigation.navigate('Home');
                     } catch (error) {
