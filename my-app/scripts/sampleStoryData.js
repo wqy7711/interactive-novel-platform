@@ -2,7 +2,7 @@ const sampleStories = [
     {
       title: "The Mystery of Shadow Manor",
       description: "Explore an abandoned mansion filled with secrets, mysteries, and unexpected twists.",
-      coverImage: "https://source.unsplash.com/random/300x300/?mansion",
+      coverImage: "/assets/image/Mystery.png",
       authorId: "TCgtCL2798MGAS9XbUnjIo4JDdp1",
       status: "approved",
       branches: [
@@ -55,7 +55,7 @@ const sampleStories = [
     {
       title: "Starship Endeavour",
       description: "Command your own spaceship and crew on a mission to explore the furthest reaches of the galaxy.",
-      coverImage: "https://source.unsplash.com/random/300x300/?spaceship",
+      coverImage: "/assets/image/Starship.png",
       authorId: "Ed2pz7RH7GNuuBFTKqy4dUHJENE3",
       status: "approved",
       branches: [
@@ -108,7 +108,7 @@ const sampleStories = [
     {
       title: "The Alchemist's Apprentice",
       description: "Learn the ancient arts of alchemy in a medieval world where magic and science blend together.",
-      coverImage: "https://source.unsplash.com/random/300x300/?alchemy",
+      coverImage: "/assets/image/Alchemist.png",
       authorId: "LcHh5f6k9ZeWEHBWFKcwppt7bwn1",
       status: "approved",
       branches: [
@@ -161,7 +161,7 @@ const sampleStories = [
     {
       title: "Digital Detective",
       description: "Solve a high-tech mystery as a cybersecurity expert in the year 2042.",
-      coverImage: "https://source.unsplash.com/random/300x300/?cyberpunk",
+      coverImage: "/assets/image/Digital.png",
       authorId: "OuZfSOJp0AWXrQ8Xa942oaj1Fht1",
       status: "pending",
       branches: [
@@ -185,4 +185,4 @@ const sampleStories = [
     }
   ];
   
-  export default sampleStories;
+  module.exports = sampleStories;

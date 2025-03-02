@@ -1,5 +1,6 @@
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, addDoc } = require('firebase/firestore');
+const { getStorage, ref, uploadBytes, getDownloadURL } = require('firebase/storage');
 const fs = require('fs');
 const path = require('path');
 
@@ -14,26 +15,44 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 const readSampleData = () => {
   const filePath = path.join(__dirname, 'sampleStoryData.js');
-  const fileContent = fs.readFileSync(filePath, 'utf8');
-  
-  const startIndex = fileContent.indexOf('[');
-  const endIndex = fileContent.lastIndexOf(']') + 1;
-  
-  if (startIndex === -1 || endIndex === -1) {
-    throw new Error('Could not extract array from file');
-  }
-  
-  const arrayContent = fileContent.substring(startIndex, endIndex);
   
   try {
-    const sampleStories = eval(arrayContent);
+    const sampleStories = require('./sampleStoryData');
     return sampleStories;
   } catch (error) {
-    console.error('Error parsing sample data:', error);
+    console.error('Error loading sample data:', error);
     throw error;
+  }
+};
+
+const uploadImageToStorage = async (localPath) => {
+  try {
+    const cleanPath = localPath.startsWith('/') ? localPath.substring(1) : localPath;
+
+    const fullPath = path.join(__dirname, '..', cleanPath);
+    
+    if (!fs.existsSync(fullPath)) {
+      console.warn(`Warning picture not exist: ${fullPath}`);
+      return null;
+    }
+    
+    const fileBuffer = fs.readFileSync(fullPath);
+    
+    const storageRef = ref(storage, `story_images/${path.basename(localPath)}`);
+    
+    const snapshot = await uploadBytes(storageRef, fileBuffer);
+    
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    
+    console.log(`Successful: ${path.basename(localPath)}, URL: ${downloadURL}`);
+    return downloadURL;
+  } catch (error) {
+    console.error(`Error: ${localPath}`, error);
+    return null;
   }
 };
 
@@ -45,10 +64,20 @@ const importStories = async () => {
     console.log(`Found ${sampleStories.length} stories to import`);
     
     for (const story of sampleStories) {
+      let coverImageUrl = story.coverImage;
+      
+      if (story.coverImage && story.coverImage.startsWith('/assets')) {
+        console.log(`Upload picture: ${story.coverImage}`);
+        const uploadedImageUrl = await uploadImageToStorage(story.coverImage);
+        if (uploadedImageUrl) {
+          coverImageUrl = uploadedImageUrl;
+        }
+      }
+      
       const storyRef = await addDoc(collection(db, 'stories'), {
         title: story.title,
         description: story.description,
-        coverImage: story.coverImage,
+        coverImage: coverImageUrl,
         authorId: story.authorId,
         status: story.status,
         branches: story.branches,

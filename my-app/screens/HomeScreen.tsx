@@ -4,15 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
 import exampleImage from '../assets/image/example.png';
-
-interface StoryItem {
-  _id: string;
-  title?: string;
-  coverImage?: string;
-  description?: string;
-  authorId?: string;
-  status?: string;
-}
+import type { StoryItem, Story } from '../types';
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
   const [searchText, setSearchText] = useState('');
@@ -24,23 +16,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const fetchStories = async () => {
     try {
       const response = await services.story.getStories();
-      const approvedStories = response
-        .filter((story: any) => story.status === 'approved')
-        .map((story: any) => ({
-          _id: story._id,
-          title: story.title || 'Untitled',
-          coverImage: story.coverImage || '',
-          description: story.description,
-          authorId: story.authorId,
-          status: story.status
-        }));
       
-      setStories(approvedStories);
-      setFilteredStories(approvedStories);
+      if (Array.isArray(response)) {
+        const approvedStories = response.filter(story => 
+          story && (story as Story).status === 'approved'
+        );
+        
+        setStories(approvedStories);
+        setFilteredStories(approvedStories);
+      } else {
+        setStories([]);
+        setFilteredStories([]);
+        console.error('Expected array response, got:', typeof response);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching stories:', error);
       setLoading(false);
+      setStories([]);
+      setFilteredStories([]);
       Alert.alert('Error', 'Failed to load stories');
     }
   };
@@ -50,9 +45,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     if (text.trim() === '') {
       setFilteredStories(stories);
     } else {
-      const filtered = stories.filter(story => 
-        story.title?.toLowerCase().includes(text.toLowerCase())
-      );
+      const filtered = stories.filter(story => {
+        const storyTitle = story.title || '';
+        return typeof storyTitle === 'string' && 
+               storyTitle.toLowerCase().includes(text.toLowerCase());
+      });
       setFilteredStories(filtered);
     }
   };
@@ -63,8 +60,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     setRefreshing(false);
   };
 
-  const navigateToRead = (storyId: string) => {
-    navigation.navigate('Read', { storyId });
+  const navigateToStoryDetail = (storyId: string) => {
+    navigation.navigate('StoryDetail', { storyId });
   };
 
   const openDrawer = () => {
@@ -80,7 +77,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const renderItem = ({ item }: { item: StoryItem }) => (
     <TouchableOpacity 
       style={styles.card} 
-      onPress={() => navigateToRead(item._id)}
+      onPress={() => navigateToStoryDetail(item._id)}
     >
       <Image 
         source={item.coverImage ? { uri: item.coverImage } : exampleImage} 

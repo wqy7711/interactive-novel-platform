@@ -17,6 +17,7 @@ import StoryReviewScreen from './screens/StoryReviewScreen';
 import UserManagementScreen from './screens/UserManagementScreen';
 import CommentReviewScreen from './screens/CommentReviewScreen';
 import AIIllustrationScreen from './screens/AIIllustrationScreen';
+import StoryDetailScreen from './screens/StoryDetailScreen';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
 const Stack = createNativeStackNavigator();
@@ -34,7 +35,6 @@ function MainDrawer() {
       }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
-      <Drawer.Screen name="Read" component={ReadScreen} />
       <Drawer.Screen name="Create" component={CreateInitialScreen} />
       <Drawer.Screen name="Favorites" component={FavoritesScreen} />
       <Drawer.Screen name="Bookmarks" component={BookmarksScreen} />
@@ -73,6 +73,11 @@ export default function App() {
           name="Read" 
           component={ReadScreen} 
           options={{ title: 'Read Story' }} 
+        />
+        <Stack.Screen 
+          name="StoryDetail" 
+          component={StoryDetailScreen} 
+          options={{ title: 'Story Details', headerShown: false }} 
         />
         <Stack.Screen 
           name="CreateInitial" 
