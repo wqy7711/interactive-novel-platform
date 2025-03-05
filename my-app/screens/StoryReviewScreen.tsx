@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList,ActivityIndicator,Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
 
@@ -20,9 +20,17 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
     try {
       setLoading(true);
       const response = await services.admin.getPendingStories();
-      setStories(response);
+      
+      if (Array.isArray(response)) {
+        setStories(response);
+      } else {
+        console.error('Expected array response, got:', typeof response);
+        setStories([]);
+      }
+      
       setLoading(false);
     } catch (error) {
+      console.error('Error fetching pending stories:', error);
       setLoading(false);
       Alert.alert(
         'Failed to get data', 
@@ -37,6 +45,7 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
       setStories(prevStories => prevStories.filter(story => story._id !== storyId));
       Alert.alert('Success', 'Story approved');
     } catch (error) {
+      console.error('Error approving story:', error);
       Alert.alert(
         'Operation failed', 
         error instanceof Error ? error.message : 'Unknown error occurred while approving story'
@@ -50,11 +59,42 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
       setStories(prevStories => prevStories.filter(story => story._id !== storyId));
       Alert.alert('Success', 'Story rejected');
     } catch (error) {
+      console.error('Error rejecting story:', error);
       Alert.alert(
         'Operation failed', 
         error instanceof Error ? error.message : 'Unknown error occurred while rejecting story'
       );
     }
+  };
+
+  const handleDelete = async (storyId: string) => {
+    Alert.alert(
+      'Delete Story',
+      'Are you sure you want to delete this story? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await services.admin.deleteStory(storyId);
+              setStories(prevStories => prevStories.filter(story => story._id !== storyId));
+              Alert.alert('Success', 'Story deleted');
+            } catch (error) {
+              console.error('Error deleting story:', error);
+              Alert.alert(
+                'Operation failed', 
+                error instanceof Error ? error.message : 'Unknown error occurred while deleting story'
+              );
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleRefresh = async () => {
@@ -92,6 +132,15 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
         >
           <Ionicons name="close-circle-outline" size={24} color="#fff" />
           <Text style={styles.actionText}>Reject</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.deleteButtonContainer}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.deleteButton]} 
+          onPress={() => handleDelete(item._id)}
+        >
+          <Ionicons name="trash-outline" size={24} color="#fff" />
+          <Text style={styles.actionText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -177,7 +226,11 @@ const styles = StyleSheet.create({
   },
   actionButtons: { 
     flexDirection: 'row', 
-    justifyContent: 'space-between' 
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
+  deleteButtonContainer: {
+    alignItems: 'center'
   },
   actionButton: {
     flexDirection: 'row',
@@ -185,15 +238,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
-    flex: 0.48
+    flex: 0.48,
+    justifyContent: 'center'
   },
   approveButton: { 
-    backgroundColor: '#4CAF50', 
-    justifyContent: 'center'
+    backgroundColor: '#4CAF50'
   },
   rejectButton: { 
-    backgroundColor: '#E57373',
-    justifyContent: 'center'
+    backgroundColor: '#E57373'
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    flex: 0.5,
+    marginTop: 8
   },
   actionText: { 
     color: '#fff', 
