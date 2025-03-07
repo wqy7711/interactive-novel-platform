@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  FlatList
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
@@ -20,6 +22,8 @@ interface Comment {
   username: string;
   likes: number;
   createdAt?: string;
+  status?: string;
+  userId?: string;
 }
 
 interface StoryDetail {
@@ -39,8 +43,26 @@ export default function StoryDetailScreen({ navigation, route }: { navigation: a
   const [favorited, setFavorited] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [toggleFavorite, setToggleFavorite] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const { storyId } = route.params || {};
+
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const user = await services.auth.getCurrentUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error loading current user:', error);
+      }
+    };
+
+    loadCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (storyId) {
@@ -151,22 +173,127 @@ export default function StoryDetailScreen({ navigation, route }: { navigation: a
     }
   };
 
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) {
+      return;
+    }
+
+    if (!currentUser) {
+      Alert.alert('Login Required', 'Please login to add comments');
+      return;
+    }
+
+    try {
+      setSubmittingComment(true);
+      
+      const commentData = {
+        storyId,
+        userId: currentUser.uid,
+        username: currentUser.username || 'User',
+        text: newComment.trim()
+      };
+      
+      const result = await services.comment.addComment(commentData);
+      
+      if (result && result.comment) {
+        setComments(prevComments => [result.comment, ...prevComments]);
+      }
+      
+      setNewComment('');
+      setSubmittingComment(false);
+      
+      Alert.alert('Success', 'Your comment has been added');
+      
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      setSubmittingComment(false);
+      Alert.alert('Error', 'Failed to add comment');
+    }
+  };
+
+  const handleLikeComment = async (commentId: string) => {
+    try {
+      if (!currentUser) {
+        Alert.alert('Login Required', 'Please login to like comments');
+        return;
+      }
+      
+      const result = await services.comment.likeComment(commentId);
+      
+      if (result && result.likes !== undefined) {
+        setComments(prevComments => 
+          prevComments.map(comment => 
+            comment._id === commentId ? { ...comment, likes: result.likes } : comment
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error liking comment:', error);
+      Alert.alert('Error', 'Failed to like comment');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, userId: string) => {
+    if (currentUser && (currentUser.uid === userId || currentUser.role === 'admin')) {
+      Alert.alert(
+        'Delete Comment',
+        'Are you sure you want to delete this comment?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await services.comment.deleteComment(commentId);
+                setComments(prevComments => prevComments.filter(comment => comment._id !== commentId));
+                Alert.alert('Success', 'Comment deleted successfully');
+              } catch (error) {
+                console.error('Error deleting comment:', error);
+                Alert.alert('Error', 'Failed to delete comment');
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
   const startReading = () => {
     navigation.navigate('Read', { storyId });
   };
 
-  const renderComment = ({ item }: { item: Comment }) => (
-    <View style={styles.commentItem}>
-      <Text style={styles.commentUser}>{item.username}</Text>
+  const renderComment = (item: Comment) => (
+    <View style={styles.commentItem} key={item._id}>
+      <View style={styles.commentHeader}>
+        <Text style={styles.commentUser}>{item.username}</Text>
+        
+        {currentUser && (currentUser.uid === item.userId || currentUser.role === 'admin') && (
+          <TouchableOpacity 
+            onPress={() => handleDeleteComment(item._id, item.userId || '')}
+            style={styles.deleteCommentButton}
+          >
+            <Ionicons name="trash-outline" size={18} color="#E57373" />
+          </TouchableOpacity>
+        )}
+      </View>
+      
       <Text style={styles.commentText}>{item.text}</Text>
+      
       <View style={styles.commentFooter}>
         <Text style={styles.commentDate}>
           {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Unknown date'}
         </Text>
-        <View style={styles.likesContainer}>
+        <TouchableOpacity 
+          style={styles.likeButton}
+          onPress={() => handleLikeComment(item._id)}
+        >
           <Ionicons name="heart" size={16} color="#E57373" />
           <Text style={styles.likesCount}>{item.likes || 0}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -209,44 +336,82 @@ export default function StoryDetailScreen({ navigation, route }: { navigation: a
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollContainer}>
-        <View style={styles.storyHeader}>
-          <Image 
-            source={story?.coverImage ? { uri: story.coverImage } : require('../assets/image/example.png')} 
-            style={styles.coverImage} 
-          />
-          <View style={styles.storyInfo}>
-            <Text style={styles.title}>{story?.title || 'Untitled'}</Text>
-            <Text style={styles.author}>
-              {story?.authorName ? `By ${story.authorName}` : 'Unknown Author'}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
+        <ScrollView 
+          style={styles.scrollContainer}
+          ref={scrollViewRef}
+        >
+          <View style={styles.storyHeader}>
+            <Image 
+              source={story?.coverImage ? { uri: story.coverImage } : require('../assets/image/example.png')} 
+              style={styles.coverImage} 
+            />
+            <View style={styles.storyInfo}>
+              <Text style={styles.title}>{story?.title || 'Untitled'}</Text>
+              <Text style={styles.author}>
+                {story?.authorName ? `By ${story.authorName}` : 'Unknown Author'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About this story</Text>
+            <Text style={styles.description}>
+              {story?.description || 'No description available.'}
             </Text>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About this story</Text>
-          <Text style={styles.description}>
-            {story?.description || 'No description available.'}
-          </Text>
-        </View>
+          <TouchableOpacity 
+            style={styles.readButton}
+            onPress={startReading}
+          >
+            <Ionicons name="book-outline" size={24} color="#fff" />
+            <Text style={styles.readButtonText}>Start Reading</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.readButton}
-          onPress={startReading}
-        >
-          <Ionicons name="book-outline" size={24} color="#fff" />
-          <Text style={styles.readButtonText}>Start Reading</Text>
-        </TouchableOpacity>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Reader Comments</Text>
+            
+            <View style={styles.commentInputContainer}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add a comment..."
+                value={newComment}
+                onChangeText={setNewComment}
+                multiline
+                maxLength={500}
+                editable={!submittingComment && !!currentUser}
+              />
+              <TouchableOpacity 
+                style={[
+                  styles.commentButton, 
+                  (!newComment.trim() || submittingComment || !currentUser) && styles.disabledButton
+                ]}
+                onPress={handleSubmitComment}
+                disabled={!newComment.trim() || submittingComment || !currentUser}
+              >
+                {submittingComment ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reader Comments</Text>
-          {comments.length > 0 ? (
-            comments.map(comment => renderComment({ item: comment }))
-          ) : (
-            <Text style={styles.emptyText}>No comments yet.</Text>
-          )}
-        </View>
-      </ScrollView>
+            {comments.length > 0 ? (
+              <View style={styles.commentsList}>
+                {comments.map(comment => renderComment(comment))}
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>No comments yet. Be the first to comment!</Text>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -345,16 +510,53 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: '#e6e6e6',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  commentInput: {
+    flex: 1,
+    minHeight: 40,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  commentButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#aaa',
+  },
+  commentsList: {
+    marginTop: 8,
+  },
   commentItem: {
     backgroundColor: '#f0f0f0',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
   },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   commentUser: {
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+  },
+  deleteCommentButton: {
+    padding: 4,
   },
   commentText: {
     fontSize: 14,
@@ -369,6 +571,11 @@ const styles = StyleSheet.create({
   commentDate: {
     fontSize: 12,
     color: '#888',
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
   },
   likesContainer: {
     flexDirection: 'row',

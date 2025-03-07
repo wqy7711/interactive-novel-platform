@@ -10,6 +10,7 @@ interface Comment {
   storyId: string;
   status: string;
   createdAt?: string;
+  likes: number;
 }
 
 export default function CommentReviewScreen({ navigation }: { navigation: any }) {
@@ -51,11 +52,42 @@ export default function CommentReviewScreen({ navigation }: { navigation: any })
       Alert.alert('Error', 'Failed to reject comment');
     }
   };
+  
+  const handleDelete = async (commentId: string) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await services.admin.deleteComment(commentId);
+              setComments(prevComments => prevComments.filter(comment => comment._id !== commentId));
+              Alert.alert('Success', 'Comment deleted');
+            } catch (error) {
+              console.error('Error deleting comment:', error);
+              Alert.alert('Error', 'Failed to delete comment');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchPendingComments();
     setRefreshing(false);
+  };
+
+  const handleViewStory = (storyId: string) => {
+    navigation.navigate('StoryDetail', { storyId });
   };
 
   useEffect(() => {
@@ -64,19 +96,40 @@ export default function CommentReviewScreen({ navigation }: { navigation: any })
 
   const renderCommentItem = ({ item }: { item: Comment }) => (
     <View style={styles.card}>
+      <TouchableOpacity 
+        style={styles.storyLink}
+        onPress={() => handleViewStory(item.storyId)}
+      >
+        <Text style={styles.storyLinkText}>View Story</Text>
+      </TouchableOpacity>
+      
       <View>
         <Text style={styles.content}>{item.text}</Text>
         <Text style={styles.user}>By {item.username}</Text>
         <Text style={styles.date}>
           {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Unknown date'}
         </Text>
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Ionicons name="heart" size={14} color="#E57373" />
+            <Text style={styles.statText}>{item.likes || 0} likes</Text>
+          </View>
+          <View style={styles.stat}>
+            <Ionicons name="time-outline" size={14} color="#666" />
+            <Text style={styles.statText}>Status: {item.status}</Text>
+          </View>
+        </View>
       </View>
+      
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => handleApprove(item._id)} style={styles.approveButton}>
           <Ionicons name="checkmark-circle-outline" size={24} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleReject(item._id)} style={styles.rejectButton}>
           <Ionicons name="close-circle-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDelete(item._id)} style={styles.deleteButton}>
+          <Ionicons name="trash-outline" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>
@@ -160,23 +213,63 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
-    color: '#999'
+    color: '#999',
+    marginBottom: 8
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginBottom: 12
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16
+  },
+  statText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4
+  },
+  storyLink: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#2196F3',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginBottom: 8
+  },
+  storyLinkText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold'
   },
   actions: { 
     flexDirection: 'row', 
-    justifyContent: 'flex-end',
-    marginTop: 12,
-    gap: 12
+    justifyContent: 'space-between'
   },
   approveButton: {
     backgroundColor: '#4CAF50',
     borderRadius: 8,
-    padding: 8
+    padding: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center'
   },
   rejectButton: {
     backgroundColor: '#E57373',
     borderRadius: 8,
-    padding: 8
+    padding: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center'
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    padding: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center'
   },
   emptyText: { 
     textAlign: 'center', 
