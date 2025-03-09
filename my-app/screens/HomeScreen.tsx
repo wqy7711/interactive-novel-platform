@@ -12,9 +12,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [filteredStories, setFilteredStories] = useState<StoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [likedStories, setLikedStories] = useState<{[key: string]: boolean}>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [processingLike, setProcessingLike] = useState<string | null>(null);
 
   const fetchStories = async () => {
     try {
+      setLoading(true);
       const response = await services.story.getStories();
       
       if (Array.isArray(response)) {
@@ -24,6 +28,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         setStories(approvedStories);
         setFilteredStories(approvedStories);
+
+        if (currentUser) {
+          checkLikedStories(approvedStories);
+        }
       } else {
         setStories([]);
         setFilteredStories([]);
@@ -40,6 +48,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     }
   };
 
+  const checkLikedStories = async (storyList: StoryItem[]) => {
+    try {
+      const likeStatusMap: {[key: string]: boolean} = {};
+      
+      for (const story of storyList) {
+        const result = await services.like.isStoryLiked(story._id, currentUser.uid);
+        likeStatusMap[story._id] = result.liked;
+      }
+      
+      setLikedStories(likeStatusMap);
+    } catch (error) {
+      console.error('Error checking liked stories:', error);
+    }
+  };
+
   const filterStories = (text: string) => {
     setSearchText(text);
     if (text.trim() === '') {
@@ -51,6 +74,46 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                storyTitle.toLowerCase().includes(text.toLowerCase());
       });
       setFilteredStories(filtered);
+    }
+  };
+
+  const handleLikeStory = async (storyId: string) => {
+    if (!currentUser) {
+      Alert.alert('Login Required', 'Please login to like stories');
+      return;
+    }
+
+    try {
+      setProcessingLike(storyId);
+      
+      const result = await services.like.likeStory(storyId, currentUser.uid);
+      
+      setLikedStories(prev => ({
+        ...prev,
+        [storyId]: result.liked
+      }));
+      
+      setStories(prevStories => 
+        prevStories.map(story => 
+          story._id === storyId 
+            ? { ...story, likesCount: result.likesCount } 
+            : story
+        )
+      );
+      
+      setFilteredStories(prevStories => 
+        prevStories.map(story => 
+          story._id === storyId 
+            ? { ...story, likesCount: result.likesCount } 
+            : story
+        )
+      );
+      
+      setProcessingLike(null);
+    } catch (error) {
+      console.error('Error liking story:', error);
+      setProcessingLike(null);
+      Alert.alert('Error', 'Failed to like story');
     }
   };
 
@@ -71,20 +134,59 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   useEffect(() => {
-    fetchStories();
+    const loadUser = async () => {
+      try {
+        const user = await services.auth.getCurrentUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error loading user:', error);
+      }
+    };
+    
+    loadUser();
   }, []);
 
+  useEffect(() => {
+    fetchStories();
+  }, [currentUser]);
+
   const renderItem = ({ item }: { item: StoryItem }) => (
-    <TouchableOpacity 
-      style={styles.card} 
-      onPress={() => navigateToStoryDetail(item._id)}
-    >
-      <Image 
-        source={item.coverImage ? { uri: item.coverImage } : exampleImage} 
-        style={styles.image} 
-      />
-      <Text style={styles.title}>{item.title || 'Untitled'}</Text>
-    </TouchableOpacity>
+    <View style={styles.card}>
+      <TouchableOpacity 
+        style={styles.imageContainer} 
+        onPress={() => navigateToStoryDetail(item._id)}
+      >
+        <Image 
+          source={item.coverImage ? { uri: item.coverImage } : exampleImage} 
+          style={styles.image} 
+        />
+      </TouchableOpacity>
+      
+      <View style={styles.cardFooter}>
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title || 'Untitled'}
+        </Text>
+        
+        <View style={styles.likeContainer}>
+          <TouchableOpacity 
+            onPress={() => handleLikeStory(item._id)}
+            disabled={processingLike === item._id}
+            style={styles.likeButton}
+          >
+            {processingLike === item._id ? (
+              <ActivityIndicator size="small" color="#E57373" />
+            ) : (
+              <Ionicons 
+                name={likedStories[item._id] ? "heart" : "heart-outline"} 
+                size={16} 
+                color="#E57373" 
+              />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.likeCount}>{item.likesCount || 0}</Text>
+        </View>
+      </View>
+    </View>
   );
 
   if (loading && !refreshing) {
@@ -188,20 +290,41 @@ const styles = StyleSheet.create({
     margin: 8, 
     backgroundColor: '#fff', 
     borderRadius: 8, 
-    padding: 8, 
-    alignItems: 'center',
+    overflow: 'hidden',
     elevation: 2
+  },
+  imageContainer: {
+    width: '100%'
   },
   image: { 
     width: '100%', 
     height: 120, 
-    borderRadius: 8 
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8
+  },
+  cardFooter: {
+    padding: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
   },
   title: { 
-    marginTop: 8, 
     fontSize: 14, 
     fontWeight: '600',
-    textAlign: 'center'
+    flex: 1,
+    marginRight: 4
+  },
+  likeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  likeButton: {
+    padding: 4,
+  },
+  likeCount: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 2
   },
   loadingContainer: {
     flex: 1,

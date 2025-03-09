@@ -12,6 +12,7 @@ export interface Story {
   status?: string;
   branches?: Branch[];
   illustrationUrl?: string;
+  likesCount?: number;
 }
 
 export interface Branch {
@@ -29,4 +30,31 @@ export interface StoryItem {
   _id: string;
   title?: string;
   coverImage?: string;
+  likesCount?: number;
+}
+
+export interface Comment {
+  _id: string;
+  storyId: string;
+  userId: string;
+  username: string;
+  text: string;
+  likes: number;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Like {
+  _id: string;
+  userId: string;
+  storyId: string;
+  createdAt: string;
+}
+
+export interface CommentLike {
+  _id: string;
+  userId: string;
+  commentId: string;
+  createdAt: string;
 }

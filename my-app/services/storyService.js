@@ -13,7 +13,8 @@ const storyService = {
       
       return querySnapshot.docs.map(doc => ({
         _id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        likesCount: doc.data().likesCount || 0
       }));
     } catch (error) {
       console.error('Failed to get stories:', error);
@@ -30,9 +31,12 @@ const storyService = {
         throw new Error('Story not found');
       }
       
+      const storyData = storyDoc.data();
+      
       return {
         _id: storyDoc.id,
-        ...storyDoc.data()
+        ...storyData,
+        likesCount: storyData.likesCount || 0
       };
     } catch (error) {
       console.error('Failed to get story details:', error);
@@ -58,6 +62,7 @@ const storyService = {
         authorId: storyData.authorId,
         status: storyData.status || 'draft',
         branches: [],
+        likesCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

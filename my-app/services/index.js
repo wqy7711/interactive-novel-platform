@@ -5,6 +5,7 @@ import favoriteService from './favoriteService';
 import commentService from './commentService';
 import adminService from './adminService';
 import aiService from './aiService';
+import likeService from './likeService';
 
 export default {
   auth: authService,
@@ -13,5 +14,6 @@ export default {
   favorite: favoriteService,
   comment: commentService,
   admin: adminService,
-  ai: aiService
+  ai: aiService,
+  like: likeService
 };
