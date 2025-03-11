@@ -8,6 +8,7 @@ const storyRoutes = require("./routes/storyRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const reviewCommentRoutes = require("./routes/reviewCommentRoutes");
+const favoriteRoutes = require("./routes/favoriteRoutes");
 
 const app = express();
 app.use(cors());
@@ -25,6 +26,7 @@ app.use("/api/stories", storyRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/reviews/comments", reviewCommentRoutes);
+app.use("/api/favorites", favoriteRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
