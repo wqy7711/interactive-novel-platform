@@ -10,21 +10,28 @@ const commentService = {
   getComments: async (storyId) => {
     try {
       const commentsRef = collection(db, COMMENTS_COLLECTION);
-      const q = query(
+      
+      const baseQuery = query(
         commentsRef, 
-        where("storyId", "==", storyId),
-        where("status", "in", ["approved", "pending"]),
-        orderBy("createdAt", "desc")
+        where("storyId", "==", storyId)
       );
       
-      const querySnapshot = await getDocs(q);
-      
+      const querySnapshot = await getDocs(baseQuery);
+
       const comments = [];
       querySnapshot.forEach((doc) => {
-        comments.push({
-          _id: doc.id,
-          ...doc.data()
-        });
+        const data = doc.data();
+        if (data.status === "approved" || data.status === "pending") {
+          comments.push({
+            _id: doc.id,
+            ...data
+          });
+        }
+      });
+      
+      comments.sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
       return comments;
@@ -108,7 +115,6 @@ const commentService = {
       throw error;
     }
   },
-
 
   hasUserLikedComment: async (commentId, userId) => {
     try {
