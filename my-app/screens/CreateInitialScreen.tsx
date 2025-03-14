@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Alert,ActivityIndicator,ScrollView,Image} from 'react-native';
+import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Image} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import services from '../services';
@@ -76,6 +76,14 @@ export default function CreateInitialScreen({ navigation }: { navigation: any })
     }
   };
 
+  const generateAIImage = () => {
+    navigation.navigate('AIIllustration', { 
+      onImageGenerated: (imageUri: string) => {
+        setCoverImage(imageUri);
+      }
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -114,21 +122,39 @@ export default function CreateInitialScreen({ navigation }: { navigation: any })
         {coverImage ? (
           <View style={styles.coverImageContainer}>
             <Image source={{ uri: coverImage }} style={styles.coverImage} />
-            <TouchableOpacity 
-              style={styles.changeCoverButton} 
-              onPress={pickImage}
-            >
-              <Text style={styles.changeCoverButtonText}>Change Cover</Text>
-            </TouchableOpacity>
+            <View style={styles.imageButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.changeCoverButton} 
+                onPress={pickImage}
+              >
+                <Text style={styles.changeCoverButtonText}>Change</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.changeCoverButton, { backgroundColor: '#E57373' }]} 
+                onPress={() => setCoverImage(null)}
+              >
+                <Text style={styles.changeCoverButtonText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
-          <TouchableOpacity 
-            style={styles.coverButton} 
-            onPress={pickImage}
-          >
-            <Ionicons name="image-outline" size={24} color="#fff" />
-            <Text style={styles.coverButtonText}>Upload Cover</Text>
-          </TouchableOpacity>
+          <View style={styles.coverButtonsContainer}>
+            <TouchableOpacity 
+              style={styles.coverButton} 
+              onPress={pickImage}
+            >
+              <Ionicons name="image-outline" size={24} color="#fff" />
+              <Text style={styles.coverButtonText}>Upload Cover</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.coverButton, { backgroundColor: '#2196F3' }]} 
+              onPress={generateAIImage}
+            >
+              <Ionicons name="color-wand-outline" size={24} color="#fff" />
+              <Text style={styles.coverButtonText}>Generate AI Cover</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <TouchableOpacity
@@ -185,12 +211,15 @@ const styles = StyleSheet.create({
     height: 100, 
     textAlignVertical: 'top' 
   },
+  coverButtonsContainer: {
+    marginBottom: 16,
+  },
   coverButton: { 
     backgroundColor: '#4CAF50', 
     padding: 12, 
     borderRadius: 8, 
     alignItems: 'center', 
-    marginBottom: 16,
+    marginBottom: 10,
     flexDirection: 'row',
     justifyContent: 'center'
   },
@@ -209,10 +238,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8
   },
+  imageButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '100%'
+  },
   changeCoverButton: {
     backgroundColor: '#4CAF50',
     padding: 8,
     borderRadius: 8,
+    marginHorizontal: 5,
+    paddingHorizontal: 20
   },
   changeCoverButtonText: {
     color: '#fff',

@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
+
+interface ContentBlock {
+  id: string;
+  type: 'text' | 'image';
+  content: string;
+}
 
 interface StoryBranch {
   _id: string;
@@ -20,11 +26,14 @@ interface Story {
   description?: string;
   status?: string;
   coverImage?: string;
+  contentBlocks?: ContentBlock[];
+  branchContentBlocks?: {[key: string]: ContentBlock[]};
 }
 
 export default function ReadScreen({ navigation, route }: { navigation: any, route: any }) {
   const [story, setStory] = useState<Story | null>(null);
   const [currentBranch, setCurrentBranch] = useState<StoryBranch | null>(null);
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const [readingProgress, setReadingProgress] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [bookmarkAdded, setBookmarkAdded] = useState(false);
@@ -40,25 +49,18 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
       const storyObj: Story = { _id: storyId };
       
       if (storyData) {
-        Object.assign(storyObj, storyData);
+        Object.keys(storyData).forEach(key => {
+          (storyObj as any)[key] = (storyData as any)[key];
+        });
       }
       
       setStory(storyObj);
       
-      const branchesData = await services.story.getBranches(storyId);
-      
-      const branches = Array.isArray(branchesData) ? branchesData : [];
-      
       if (branchId) {
-
-        const branch = branches.find((b: any) => b._id === branchId);
-        if (branch) {
-          setCurrentBranch(branch);
-        } else if (branches.length > 0) {
-          setCurrentBranch(branches[0]);
-        }
-      } else if (branches.length > 0) {
-        setCurrentBranch(branches[0]);
+        await loadBranchContent(storyObj, branchId);
+      } 
+      else {
+        await loadMainContent(storyObj);
       }
       
       if (progress) {
@@ -73,17 +75,124 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
     }
   };
 
+  const loadMainContent = async (storyObj: Story) => {
+    if (storyObj.contentBlocks && storyObj.contentBlocks.length > 0) {
+      setContentBlocks(storyObj.contentBlocks);
+    } 
+    else if (storyObj.branches && storyObj.branches.length > 0) {
+      const mainBranch = storyObj.branches[0];
+      setCurrentBranch(mainBranch);
+      
+      if (mainBranch.text) {
+        setContentBlocks([{ id: '1', type: 'text', content: mainBranch.text }]);
+      } else {
+        setContentBlocks([]);
+      }
+    } else {
+      setContentBlocks([{ id: '1', type: 'text', content: 'The story has no content yet.' }]);
+      setCurrentBranch(null);
+    }
+  };
+
+  const loadBranchContent = async (storyObj: Story, branchId: string) => {
+    try {
+      let branchBlocks: ContentBlock[] = [];
+      
+      if (storyObj.branchContentBlocks && storyObj.branchContentBlocks[branchId]) {
+        branchBlocks = storyObj.branchContentBlocks[branchId];
+      } else {
+        try {
+          branchBlocks = await services.story.getBranchContentBlocks(storyId, branchId);
+        } catch (error) {
+          console.error('Failed to get branch content blocks:', error);
+          branchBlocks = [];
+        }
+      }
+      
+      if (branchBlocks && branchBlocks.length > 0) {
+        setContentBlocks(branchBlocks);
+      } else {
+        let foundBranch = false;
+        
+        if (storyObj.branches) {
+          const branch = storyObj.branches.find((b: any) => b._id === branchId);
+          
+          if (branch) {
+            foundBranch = true;
+            setCurrentBranch(branch);
+            if (branch.text) {
+              setContentBlocks([{ id: '1', type: 'text', content: branch.text }]);
+            } else {
+              setContentBlocks([{ id: '1', type: 'text', content: 'The story has no content yet.' }]);
+            }
+          }
+        }
+        
+        if (!foundBranch) {
+          try {
+            const branches = await services.story.getBranches(storyId);
+            const branch = branches.find((b: any) => b._id === branchId);
+            
+            if (branch) {
+              setCurrentBranch(branch);
+              if (branch.text) {
+                setContentBlocks([{ id: '1', type: 'text', content: branch.text }]);
+              } else {
+                setContentBlocks([{ id: '1', type: 'text', content: 'The story has no content yet.' }]);
+              }
+            } else {
+              if (storyObj.branches && storyObj.branches.length > 0) {
+                const mainBranch = storyObj.branches[0];
+                setCurrentBranch(mainBranch);
+                
+                if (mainBranch.text) {
+                  setContentBlocks([{ id: '1', type: 'text', content: mainBranch.text }]);
+                } else {
+                  setContentBlocks([{ id: '1', type: 'text', content: 'The story has no content yet.' }]);
+                }
+              } else {
+                setContentBlocks([{ id: '1', type: 'text', content: 'The specified branch cannot be found.' }]);
+                setCurrentBranch(null);
+              }
+            }
+          } catch (error) {
+            console.error('Error loading branches:', error);
+            setContentBlocks([{ id: '1', type: 'text', content: 'An error occurred when loading the branch.' }]);
+            setCurrentBranch(null);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading branch content:', error);
+      setContentBlocks([{ id: '1', type: 'text', content: 'An error occurred while loading the content. Please try again later.' }]);
+      setCurrentBranch(null);
+    }
+  };
+
   const handleChoiceSelect = async (nextBranchId: string) => {
     try {
       if (!story) return;
       
-      const branches = await services.story.getBranches(story._id);
-      const branchArray = Array.isArray(branches) ? branches : [];
+      let branches: StoryBranch[] = [];
       
-      const nextBranch = branchArray.find((b: any) => b._id === nextBranchId);
+      if (story.branches) {
+        branches = story.branches;
+      } else {
+        try {
+          branches = await services.story.getBranches(story._id);
+        } catch (error) {
+          console.error('Error fetching branches:', error);
+          Alert.alert('Error', 'Failed to load story branches');
+          return;
+        }
+      }
+      
+      const nextBranch = branches.find((b: any) => b._id === nextBranchId);
       
       if (nextBranch) {
         setCurrentBranch(nextBranch);
+        await loadBranchContent(story, nextBranchId);
+        
         if (scrollViewRef.current) {
           scrollViewRef.current.scrollTo({ y: 0, animated: true });
         }
@@ -98,9 +207,14 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
   };
 
   const updateProgress = async () => {
-    if (!story || !story.branches || !story.branches.length) return;
+    if (!story) return;
     
-    const newProgress = Math.min(100, readingProgress + (100 / story.branches.length));
+    let totalBranches = 1;
+    if (story.branches) {
+      totalBranches = story.branches.length || 1;
+    }
+    
+    const newProgress = Math.min(100, readingProgress + (100 / totalBranches));
     setReadingProgress(newProgress);
   };
 
@@ -137,6 +251,27 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
       navigation.goBack();
     }
   }, [storyId]);
+
+  const renderContentBlock = (block: ContentBlock) => {
+    if (block.type === 'text') {
+      return (
+        <Text key={block.id} style={styles.storyContent}>
+          {block.content}
+        </Text>
+      );
+    } else if (block.type === 'image') {
+      return (
+        <View key={block.id} style={styles.storyImageContainer}>
+          <Image 
+            source={{ uri: block.content }} 
+            style={styles.storyImage}
+            resizeMode="contain"
+          />
+        </View>
+      );
+    }
+    return null;
+  };
 
   if (loading) {
     return (
@@ -176,13 +311,11 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
         ref={scrollViewRef}
         contentContainerStyle={styles.contentContainer}
       >
-        {currentBranch ? (
+        {contentBlocks.length > 0 ? (
           <>
-            <Text style={styles.storyContent}>
-              {currentBranch.text || 'No content available for this branch.'}
-            </Text>
+            {contentBlocks.map(block => renderContentBlock(block))}
 
-            {currentBranch.choices && currentBranch.choices.length > 0 && (
+            {currentBranch && currentBranch.choices && currentBranch.choices.length > 0 && (
               <View style={styles.optionsContainer}>
                 <Text style={styles.optionTitle}>Choose your path:</Text>
                 {currentBranch.choices.map((choice, index) => (
@@ -241,8 +374,23 @@ const styles = StyleSheet.create({
     textAlign: 'justify',
     marginBottom: 20,
   },
+  storyImageContainer: {
+    width: '100%',
+    height: 200,
+    marginBottom: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
   optionsContainer: {
     marginTop: 10,
+    backgroundColor: '#f0f0f0',
+    padding: 16,
+    borderRadius: 8,
   },
   optionTitle: {
     fontSize: 18,
@@ -256,6 +404,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
   },
   optionText: {
     fontSize: 16,

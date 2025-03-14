@@ -33,6 +33,8 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
   const [saving, setSaving] = useState(false);
 
   const storyId = route.params?.storyId;
+  const parentBranchId = route.params?.parentBranchId;
+  const choiceIndex = route.params?.choiceIndex;
 
   useEffect(() => {
     if (!storyId) {
@@ -58,6 +60,24 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
       }));
       
       setBranches(formattedBranches);
+      
+      if (parentBranchId && typeof choiceIndex === 'number') {
+        const parentBranch = formattedBranches.find(branch => branch._id === parentBranchId);
+        if (parentBranch && parentBranch.choices && parentBranch.choices[choiceIndex]) {
+          const targetBranchId = parentBranch.choices[choiceIndex].nextBranchId;
+          const targetBranch = formattedBranches.find(branch => branch._id === targetBranchId);
+          
+          if (targetBranch) {
+            setCurrentBranch(targetBranch);
+            setBranchText(targetBranch.text || '');
+            setChoices(targetBranch.choices || []);
+            setEditing(true);
+          } else {
+            handleAddBranch(targetBranchId);
+          }
+        }
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -66,11 +86,19 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
     }
   };
 
-  const handleAddBranch = () => {
+  const handleAddBranch = (predefinedId?: string) => {
     setCurrentBranch(null);
     setBranchText('');
     setChoices([]);
     setEditing(true);
+    
+    if (predefinedId) {
+      setCurrentBranch({
+        _id: predefinedId,
+        text: '',
+        choices: []
+      });
+    }
   };
 
   const handleEditBranch = (branch: Branch) => {
@@ -88,7 +116,7 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
 
     const newChoice = {
       text: newChoiceText,
-      nextBranchId: `branch_${Date.now()}`
+      nextBranchId: `branch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     };
 
     setChoices([...choices, newChoice]);
@@ -123,15 +151,27 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
         
         const currentBranches: Branch[] = Array.isArray(storyData.branches) ? storyData.branches : [];
         
-        const updatedBranches = currentBranches.map((branch: Branch) => {
-          if (branch._id === currentBranch._id) {
-            return { 
-              _id: branch._id,
-              ...branchData 
-            };
-          }
-          return branch;
-        });
+        let updatedBranches;
+        
+        if (currentBranches.some(branch => branch._id === currentBranch._id)) {
+          updatedBranches = currentBranches.map((branch: Branch) => {
+            if (branch._id === currentBranch._id) {
+              return { 
+                _id: branch._id,
+                ...branchData 
+              };
+            }
+            return branch;
+          });
+        } else {
+          updatedBranches = [
+            ...currentBranches,
+            {
+              _id: currentBranch._id,
+              ...branchData
+            }
+          ];
+        }
 
         await services.story.updateStory(storyId, { branches: updatedBranches });
       } else {
@@ -159,6 +199,62 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
       Alert.alert('Error', 'Failed to delete branch');
     }
   };
+
+  const handleContinueWriting = (choiceIndex: number) => {
+    if (!currentBranch) return;
+    
+    if (!currentBranch.choices || !currentBranch.choices[choiceIndex]) {
+      Alert.alert('Error', 'Invalid choice');
+      return;
+    }
+    
+    const targetBranchId = currentBranch.choices[choiceIndex].nextBranchId;
+
+    handleSaveBranch().then(() => {
+      const targetBranch = branches.find(b => b._id === targetBranchId);
+      
+      if (targetBranch) {
+        handleEditBranch(targetBranch);
+      } else {
+        navigation.push('BranchDesign', { 
+          storyId: storyId, 
+          parentBranchId: currentBranch._id,
+          choiceIndex: choiceIndex 
+        });
+      }
+    });
+  };
+
+  const handleContinueStory = (choiceIndex: number) => {
+    if (!currentBranch) return;
+    
+    if (!currentBranch.choices || !currentBranch.choices[choiceIndex]) {
+      Alert.alert('Error', 'Invalid choice');
+      return;
+    }
+    
+    const targetBranchId = currentBranch.choices[choiceIndex].nextBranchId;
+    
+    handleSaveBranch().then(() => {
+      navigation.navigate('WriteStory', { 
+        storyId: storyId,
+        branchId: targetBranchId,
+        isNewBranch: true,
+        isNewContent: true
+      });
+    });
+  };
+
+  const renderChoiceItem = ({ item, index }: { item: { text: string; nextBranchId: string }, index: number }) => (
+    <View style={styles.choiceItem}>
+      <Text style={styles.choiceText}>{item.text}</Text>
+      <View style={styles.choiceActions}>
+        <TouchableOpacity onPress={() => handleRemoveChoice(index)}>
+          <Ionicons name="close-circle" size={22} color="#E57373" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   const renderBranchItem = ({ item }: { item: Branch }) => (
     <View style={styles.branchItem}>
@@ -246,11 +342,31 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
             data={choices}
             keyExtractor={(_, index) => `choice-${index}`}
             renderItem={({ item, index }) => (
-              <View style={styles.choiceItem}>
-                <Text style={styles.choiceText}>{item.text}</Text>
-                <TouchableOpacity onPress={() => handleRemoveChoice(index)}>
-                  <Ionicons name="close-circle" size={22} color="#E57373" />
-                </TouchableOpacity>
+              <View style={styles.choiceItemWithButtons}>
+                <View style={styles.choiceContent}>
+                  <Text style={styles.choiceText}>{item.text}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveChoice(index)}>
+                    <Ionicons name="close-circle" size={22} color="#E57373" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.choiceButtonsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.choiceButton, { backgroundColor: '#4CAF50' }]}
+                    onPress={() => handleContinueStory(index)}
+                  >
+                    <Ionicons name="create-outline" size={16} color="#fff" />
+                    <Text style={styles.choiceButtonText}>Continue Story</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.choiceButton, { backgroundColor: '#2196F3' }]}
+                    onPress={() => handleContinueWriting(index)}
+                  >
+                    <Ionicons name="git-branch-outline" size={16} color="#fff" />
+                    <Text style={styles.choiceButtonText}>Add Branches</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
             ListEmptyComponent={
@@ -295,7 +411,7 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
         }
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={handleAddBranch}>
+      <TouchableOpacity style={styles.addButton} onPress={() => handleAddBranch()}>
         <Ionicons name="add" size={24} color="white" />
         <Text style={styles.addButtonText}>Add New Branch</Text>
       </TouchableOpacity>
@@ -402,7 +518,7 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   choicesList: {
-    maxHeight: 200,
+    maxHeight: 250,
     marginBottom: 16
   },
   choiceItem: {
@@ -414,9 +530,41 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8
   },
+  choiceItemWithButtons: {
+    backgroundColor: '#e6e6e6',
+    borderRadius: 8,
+    marginBottom: 12,
+    overflow: 'hidden'
+  },
+  choiceContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  choiceButtonsContainer: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+  },
+  choiceButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  choiceButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    marginLeft: 4,
+  },
   choiceText: {
     flex: 1,
     fontSize: 14
+  },
+  choiceActions: {
+    flexDirection: 'row',
   },
   addChoiceContainer: {
     flexDirection: 'row',

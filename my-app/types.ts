@@ -3,6 +3,12 @@ export interface FirebaseDocument {
   [key: string]: any;
 }
 
+export interface ContentBlock {
+  id: string;
+  type: 'text' | 'image';
+  content: string;
+}
+
 export interface Story {
   _id: string;
   title?: string;
@@ -13,6 +19,8 @@ export interface Story {
   branches?: Branch[];
   illustrationUrl?: string;
   likesCount?: number;
+  contentBlocks?: ContentBlock[];
+  branchContentBlocks?: {[key: string]: ContentBlock[]};
 }
 
 export interface Branch {

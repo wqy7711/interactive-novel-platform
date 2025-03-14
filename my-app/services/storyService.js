@@ -62,6 +62,7 @@ const storyService = {
         authorId: storyData.authorId,
         status: storyData.status || 'draft',
         branches: [],
+        contentBlocks: [{ id: '1', type: 'text', content: '' }],
         likesCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -94,6 +95,19 @@ const storyService = {
         const blob = await response.blob();
         await uploadBytes(storageRef, blob);
         storyData.illustrationUrl = await getDownloadURL(storageRef);
+      }
+      
+      if (storyData.contentBlocks) {
+        for (let i = 0; i < storyData.contentBlocks.length; i++) {
+          const block = storyData.contentBlocks[i];
+          if (block.type === 'image' && block.content && block.content.startsWith('file://')) {
+            const storageRef = ref(storage, `stories/${storyId}/content/${Date.now()}_${i}`);
+            const response = await fetch(block.content);
+            const blob = await response.blob();
+            await uploadBytes(storageRef, blob);
+            storyData.contentBlocks[i].content = await getDownloadURL(storageRef);
+          }
+        }
       }
       
       const updateData = {
@@ -141,7 +155,7 @@ const storyService = {
       const branches = storyData.branches || [];
       
       const newBranch = {
-        _id: Date.now().toString(),
+        _id: branchData._id || Date.now().toString(),
         text: branchData.text,
         choices: branchData.choices || []
       };
@@ -198,6 +212,88 @@ const storyService = {
       return { message: "Branch deleted successfully" };
     } catch (error) {
       console.error('Failed to delete branch:', error);
+      throw error;
+    }
+  },
+
+  getBranchContentBlocks: async (storyId, branchId) => {
+    try {
+      const storyRef = doc(db, 'stories', storyId);
+      const storyDoc = await getDoc(storyRef);
+      
+      if (!storyDoc.exists()) {
+        throw new Error('Story not found');
+      }
+      
+      const storyData = storyDoc.data();
+      
+      if (storyData.branchContentBlocks && storyData.branchContentBlocks[branchId]) {
+        return storyData.branchContentBlocks[branchId];
+      }
+      
+      const branch = (storyData.branches || []).find(b => b._id === branchId);
+      if (branch && branch.text) {
+        return [{ id: '1', type: 'text', content: branch.text }];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Failed to get branch content blocks:', error);
+      throw error;
+    }
+  },
+
+  updateBranchContentBlocks: async (storyId, branchId, contentBlocks) => {
+    try {
+      const storyRef = doc(db, 'stories', storyId);
+      const storyDoc = await getDoc(storyRef);
+      
+      if (!storyDoc.exists()) {
+        throw new Error('Story not found');
+      }
+      
+      const storyData = storyDoc.data();
+      
+      const branchContentBlocks = storyData.branchContentBlocks || {};
+      
+      branchContentBlocks[branchId] = contentBlocks;
+      
+      for (let i = 0; i < contentBlocks.length; i++) {
+        const block = contentBlocks[i];
+        if (block.type === 'image' && block.content && block.content.startsWith('file://')) {
+          const storageRef = ref(storage, `stories/${storyId}/branches/${branchId}/${Date.now()}_${i}`);
+          const response = await fetch(block.content);
+          const blob = await response.blob();
+          await uploadBytes(storageRef, blob);
+          contentBlocks[i].content = await getDownloadURL(storageRef);
+        }
+      }
+      
+      let branches = storyData.branches || [];
+      branches = branches.map(branch => {
+        if (branch._id === branchId) {
+          const textBlocks = contentBlocks.filter(block => block.type === 'text');
+          const text = textBlocks.map(block => block.content).join('\n\n');
+          return {
+            ...branch,
+            text
+          };
+        }
+        return branch;
+      });
+      
+      await updateDoc(storyRef, { 
+        branchContentBlocks,
+        branches,
+        updatedAt: new Date().toISOString()
+      });
+      
+      return { 
+        message: "Branch content blocks updated successfully",
+        contentBlocks
+      };
+    } catch (error) {
+      console.error('Failed to update branch content blocks:', error);
       throw error;
     }
   }

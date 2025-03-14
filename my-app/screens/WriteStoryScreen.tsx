@@ -1,73 +1,118 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Image} from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  StyleSheet, 
+  SafeAreaView, 
+  TouchableOpacity, 
+  Alert, 
+  ActivityIndicator, 
+  ScrollView, 
+  Image,
+  FlatList
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import services from '../services';
-
-interface Branch {
-  _id: string;
-  text?: string;
-  choices?: Array<{
-    text: string;
-    nextBranchId: string;
-  }>;
-}
-
-interface StoryData {
-  _id: string;
-  title?: string;
-  description?: string;
-  branches?: Branch[];
-  status?: string;
-  coverImage?: string;
-  illustrationUrl?: string;
-  authorId?: string;
-}
-
-interface UpdateResponse {
-  message?: string;
-  story?: StoryData;
-}
+import { Story, Branch, ContentBlock } from '../types';
 
 export default function WriteStoryScreen({ navigation, route }: { navigation: any, route: any }) {
-  const [mainStory, setMainStory] = useState('');
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
+    { id: '1', type: 'text', content: '' }
+  ]);
   const [storyId, setStoryId] = useState<string | null>(null);
-  const [storyData, setStoryData] = useState<StoryData | null>(null);
+  const [branchId, setBranchId] = useState<string | null>(null);
+  const [storyData, setStoryData] = useState<Story | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [illustrationUrl, setIllustrationUrl] = useState<string | null>(null);
+  const [isNewBranch, setIsNewBranch] = useState(false);
 
   useEffect(() => {
     const id = route.params?.storyId;
+    const branch = route.params?.branchId;
+    const isNew = route.params?.isNewBranch === true;
+    const isNewContent = route.params?.isNewContent === true;
+    
     if (id) {
       setStoryId(id);
-      fetchStoryData(id);
+      
+      if (branch) {
+        setBranchId(branch);
+        setIsNewBranch(isNew);
+        
+        if (isNewContent) {
+          setContentBlocks([{ id: '1', type: 'text', content: '' }]);
+          fetchStoryDataOnly(id);
+        } else {
+          fetchBranchData(id, branch);
+        }
+      } else {
+        fetchStoryData(id);
+      }
     } else {
       Alert.alert('Error', 'No story ID provided');
       navigation.goBack();
     }
+  }, [route.params?.storyId, route.params?.branchId]);
 
-    if (route.params?.illustrationUrl) {
-      setIllustrationUrl(route.params.illustrationUrl);
+  useEffect(() => {
+    if (route.params?.illustrationUrl && route.params?.shouldAddImage) {
+      handleAddImage(route.params.illustrationUrl);
+      navigation.setParams({ illustrationUrl: undefined, shouldAddImage: undefined });
     }
-  }, [route.params]);
+  }, [route.params?.illustrationUrl, route.params?.shouldAddImage]);
+
+  const fetchStoryDataOnly = async (id: string) => {
+    try {
+      setLoading(true);
+      const story = await services.story.getStoryById(id);
+      
+      const formattedStory: Story = { 
+        branches: [],
+        contentBlocks: [],
+        _id: id 
+      };
+      
+      if (story) {
+        const { _id, ...restStory } = story as any;
+        Object.assign(formattedStory, restStory);
+      }
+      
+      setStoryData(formattedStory);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching story:', error);
+      setLoading(false);
+      Alert.alert('Error', 'Failed to load story data');
+    }
+  };
 
   const fetchStoryData = async (id: string) => {
     try {
       setLoading(true);
       const story = await services.story.getStoryById(id);
       
-      const formattedStory: StoryData = { _id: id };
+      const formattedStory: Story = { 
+        branches: [], 
+        contentBlocks: [],
+        _id: id
+      };
       
       if (story) {
-        Object.keys(story).forEach(key => {
-          (formattedStory as any)[key] = (story as any)[key];
-        });
+        const { _id, ...restStory } = story as any;
+        Object.assign(formattedStory, restStory);
       }
       
       setStoryData(formattedStory);
-      
-      if (formattedStory.branches && formattedStory.branches.length > 0 && formattedStory.branches[0].text) {
-        setMainStory(formattedStory.branches[0].text);
+
+      if (formattedStory.contentBlocks && formattedStory.contentBlocks.length > 0) {
+        setContentBlocks(formattedStory.contentBlocks);
+      } 
+      else if (formattedStory.branches && formattedStory.branches.length > 0 && formattedStory.branches[0].text) {
+        setContentBlocks([
+          { id: '1', type: 'text', content: formattedStory.branches[0].text }
+        ]);
       }
       
       setLoading(false);
@@ -78,88 +123,311 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
     }
   };
 
+  const fetchBranchData = async (storyId: string, branchId: string) => {
+    try {
+      setLoading(true);
+      
+      const story = await services.story.getStoryById(storyId);
+      
+      const formattedStory: Story = { 
+        branches: [],
+        contentBlocks: [],
+        _id: storyId
+      };
+      
+      if (story) {
+        const { _id, ...restStory } = story as any;
+        Object.assign(formattedStory, restStory);
+      }
+      
+      setStoryData(formattedStory);
+      
+      const branchBlocks = await services.story.getBranchContentBlocks(storyId, branchId);
+      
+      if (Array.isArray(branchBlocks) && branchBlocks.length > 0) {
+        setContentBlocks(branchBlocks);
+      } else {
+        if (formattedStory.branches && formattedStory.branches.length > 0) {
+          const branch = formattedStory.branches.find(b => b._id === branchId);
+          
+          if (branch && branch.text) {
+            setContentBlocks([{ id: '1', type: 'text', content: branch.text }]);
+          } else if (isNewBranch) {
+            setContentBlocks([{ id: '1', type: 'text', content: '' }]);
+          }
+        } else {
+          setContentBlocks([{ id: '1', type: 'text', content: '' }]);
+        }
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching branch data:', error);
+      setLoading(false);
+      Alert.alert('Error', 'Failed to load branch data');
+    }
+  };
+
   const handleSave = async () => {
-    if (!storyId) return;
+    if (!storyId) return false;
     
-    if (!mainStory.trim()) {
+    const hasText = contentBlocks.some(block => block.type === 'text' && block.content.trim() !== '');
+    
+    if (!hasText) {
       Alert.alert('Error', 'Please write some content for your story');
-      return;
+      return false;
     }
 
     try {
       setSaving(true);
       
-      let updateResult: any = null;
+      const mainText = contentBlocks
+        .filter(block => block.type === 'text')
+        .map(block => block.content)
+        .join('\n\n');
       
-      if (storyData && storyData.branches && storyData.branches.length > 0) {
-        const firstBranchId = storyData.branches[0]._id;
-        const updateData = {
-          branches: [
-            {
-              _id: firstBranchId,
-              text: mainStory,
-              choices: storyData.branches[0].choices || []
-            },
-            ...(storyData.branches.slice(1) || [])
-          ]
+      if (branchId) {
+        await services.story.updateBranchContentBlocks(storyId, branchId, contentBlocks);
+        
+        const storyData = await services.story.getStoryById(storyId);
+        const storyWithBranches = {
+          branches: [],
+          ...(storyData || { _id: storyId })
         };
         
-        updateResult = await services.story.updateStory(storyId, updateData);
-      } else {
-        const branchData = {
-          text: mainStory,
-          choices: []
-        };
-        const addBranchResult = await services.story.addBranch(storyId, branchData);
-        updateResult = await services.story.getStoryById(storyId);
-      }
-      
-      if (illustrationUrl) {
-        const illustrationResult = await services.story.updateStory(storyId, {
-          illustrationUrl
-        });
-        
-        if (illustrationResult) {
-          updateResult = illustrationResult;
+        if (storyWithBranches && storyWithBranches.branches && storyWithBranches.branches.length > 0) {
+          const updatedBranches = storyWithBranches.branches.map((branch: Branch) => {
+            if (branch._id === branchId) {
+              return {
+                ...branch,
+                text: mainText
+              };
+            }
+            return branch;
+          });
+          
+          await services.story.updateStory(storyId, { branches: updatedBranches });
+        } else {
+          const newBranch: Branch = {
+            _id: branchId,
+            text: mainText,
+            choices: []
+          };
+          await services.story.updateStory(storyId, { 
+            branches: [newBranch],
+            contentBlocks: contentBlocks 
+          });
         }
-      }
-      
-      if (updateResult) {
-        if (updateResult.story && typeof updateResult.story === 'object') {
-          setStoryData(updateResult.story);
-        } 
-        else if (updateResult._id && typeof updateResult === 'object') {
-          setStoryData(updateResult);
-        }
-        else {
-          const refreshedStory = await services.story.getStoryById(storyId);
-          if (refreshedStory) {
-            setStoryData(refreshedStory);
+      } 
+      else {
+        if (storyData && storyData.branches && storyData.branches.length > 0) {
+          const firstBranchId = storyData.branches[0]._id;
+          const updateData = {
+            branches: [
+              {
+                _id: firstBranchId,
+                text: mainText,
+                choices: storyData.branches[0].choices || []
+              },
+              ...(storyData.branches.slice(1) || [])
+            ],
+            contentBlocks: contentBlocks,
+          };
+          
+          const updateResult = await services.story.updateStory(storyId, updateData);
+          
+          if (updateResult && updateResult.story) {
+            setStoryData(updateResult.story);
+          }
+        } else {
+          const newBranchId = `branch_${Date.now()}`;
+          const updateData = {
+            branches: [
+              {
+                _id: newBranchId,
+                text: mainText,
+                choices: []
+              }
+            ],
+            contentBlocks: contentBlocks
+          };
+          
+          const updateResult = await services.story.updateStory(storyId, updateData);
+          
+          if (updateResult && updateResult.story) {
+            setStoryData(updateResult.story);
           }
         }
       }
       
       setSaving(false);
       Alert.alert('Success', 'Story saved successfully');
+      return true;
     } catch (error) {
       console.error('Error saving story:', error);
       setSaving(false);
       Alert.alert('Error', 'Failed to save story');
+      return false;
     }
+  };
+
+  const addTextBlock = () => {
+    const newId = Date.now().toString();
+    setContentBlocks([
+      ...contentBlocks,
+      { id: newId, type: 'text', content: '' }
+    ]);
+  };
+
+  const updateTextBlock = (id: string, text: string) => {
+    setContentBlocks(blocks => 
+      blocks.map(block => 
+        block.id === id ? { ...block, content: text } : block
+      )
+    );
+  };
+
+  const handleAddImage = async (uri?: string) => {
+    try {
+      let imageUri = uri;
+      
+      if (!imageUri) {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'We need camera roll permissions to upload images');
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          quality: 0.8,
+        });
+
+        if (result.canceled || !result.assets || result.assets.length === 0) {
+          return;
+        }
+        
+        imageUri = result.assets[0].uri;
+      }
+      
+      if (imageUri) {
+        const newId = Date.now().toString();
+        setContentBlocks([
+          ...contentBlocks,
+          { id: newId, type: 'image', content: imageUri }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error adding image:', error);
+      Alert.alert('Error', 'Failed to add image');
+    }
+  };
+
+  const deleteBlock = (id: string) => {
+    const textBlocks = contentBlocks.filter(block => block.type === 'text');
+    if (textBlocks.length === 1 && textBlocks[0].id === id) {
+      Alert.alert('Error', 'Cannot delete the only text block');
+      return;
+    }
+    
+    setContentBlocks(blocks => blocks.filter(block => block.id !== id));
   };
 
   const navigateToBranchDesign = () => {
     if (!storyId) return;
-    navigation.navigate('BranchDesign', { storyId });
-  };
-
-  const navigateToUploadImage = () => {
-    Alert.alert('Upload Image', 'This would open your device image picker');
+    
+    handleSave().then((success) => {
+      if (success) {
+        if (branchId) {
+          navigation.navigate('BranchDesign', { 
+            storyId, 
+            parentBranchId: branchId
+          });
+        } else {
+          navigation.navigate('BranchDesign', { storyId });
+        }
+      }
+    });
   };
 
   const navigateToAIIllustration = () => {
     if (!storyId) return;
     navigation.navigate('AIIllustration', { storyId });
+  };
+
+  const handleSubmitForReview = async () => {
+    Alert.alert(
+      'Submit Story',
+      'Submit your story for review?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Submit',
+          onPress: async () => {
+            try {
+              const saved = await handleSave();
+              if (saved && storyId) {
+                await services.story.updateStory(storyId, { status: 'pending' });
+                Alert.alert('Success', 'Story submitted for review', [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'MainDrawer' }],
+                      });
+                    }
+                  }
+                ]);
+              }
+            } catch (error) {
+              console.error('Error submitting story:', error);
+              Alert.alert('Error', 'Failed to submit story');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderContentBlock = ({ item }: { item: ContentBlock }) => {
+    if (item.type === 'text') {
+      return (
+        <View style={styles.textBlockContainer}>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Write your story here..."
+            multiline
+            value={item.content}
+            onChangeText={(text) => updateTextBlock(item.id, text)}
+          />
+          <TouchableOpacity 
+            style={styles.deleteBlockButton}
+            onPress={() => deleteBlock(item.id)}
+          >
+            <Ionicons name="close-circle" size={24} color="#E57373" />
+          </TouchableOpacity>
+        </View>
+      );
+    } else if (item.type === 'image') {
+      return (
+        <View style={styles.imageBlockContainer}>
+          <Image source={{ uri: item.content }} style={styles.storyImage} />
+          <TouchableOpacity 
+            style={styles.deleteImageButton}
+            onPress={() => deleteBlock(item.id)}
+          >
+            <Ionicons name="close-circle" size={24} color="#E57373" />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return null;
   };
 
   if (loading) {
@@ -186,7 +454,9 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Write Story</Text>
+        <Text style={styles.headerText}>
+          {branchId ? "Write Branch Story" : "Write Story"}
+        </Text>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color="#333" />
@@ -196,78 +466,57 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {illustrationUrl && (
-          <View style={styles.illustrationContainer}>
-            <Image source={{ uri: illustrationUrl }} style={styles.illustration} />
+      <FlatList
+        data={contentBlocks}
+        renderItem={renderContentBlock}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.contentContainer}
+        ListFooterComponent={
+          <View style={styles.actionsContainer}>
+            <View style={styles.blockActionsRow}>
+              <TouchableOpacity 
+                style={styles.actionButton} 
+                onPress={addTextBlock}
+              >
+                <Ionicons name="document-text-outline" size={24} color="#fff" />
+                <Text style={styles.actionButtonText}>Add Text</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, { backgroundColor: '#3949AB' }]} 
+                onPress={() => handleAddImage()}
+              >
+                <Ionicons name="image-outline" size={24} color="#fff" />
+                <Text style={styles.actionButtonText}>Add Image</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={navigateToBranchDesign}
+            >
+              <Ionicons name="git-branch-outline" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Add Branch</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={navigateToAIIllustration}
+            >
+              <Ionicons name="color-wand-outline" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Generate AI Image</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.button, styles.publishButton]} 
+              onPress={handleSubmitForReview}
+            >
+              <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Submit for Review</Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        <Text style={styles.label}>Main Story</Text>
-        <TextInput
-          style={styles.textArea}
-          placeholder="Write the main storyline here..."
-          multiline
-          value={mainStory}
-          onChangeText={setMainStory}
-        />
-
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={navigateToBranchDesign}
-        >
-          <Ionicons name="git-branch-outline" size={24} color="#fff" />
-          <Text style={styles.buttonText}>Add Branch</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={navigateToUploadImage}
-        >
-          <Ionicons name="image-outline" size={24} color="#fff" />
-          <Text style={styles.buttonText}>Upload Local Image</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={navigateToAIIllustration}
-        >
-          <Ionicons name="color-wand-outline" size={24} color="#fff" />
-          <Text style={styles.buttonText}>Generate AI Image</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, styles.publishButton]} 
-          onPress={() => {
-            Alert.alert(
-              'Submit Story',
-              'Submit your story for review?',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel'
-                },
-                {
-                  text: 'Submit',
-                  onPress: async () => {
-                    try {
-                      const result = await services.story.updateStory(storyId!, { status: 'pending' });
-                      Alert.alert('Success', 'Story submitted for review');
-                      navigation.navigate('Home');
-                    } catch (error) {
-                      console.error('Error submitting story:', error);
-                      Alert.alert('Error', 'Failed to submit story');
-                    }
-                  }
-                }
-              ]
-            );
-          }}
-        >
-          <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
-          <Text style={styles.buttonText}>Submit for Review</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -288,21 +537,68 @@ const styles = StyleSheet.create({
     fontWeight: 'bold', 
     color: '#333' 
   },
-  content: { 
-    padding: 16 
+  contentContainer: { 
+    padding: 16,
+    paddingBottom: 100,
   },
-  label: { 
-    fontSize: 16, 
-    marginBottom: 8, 
-    fontWeight: 'bold' 
+  textBlockContainer: {
+    position: 'relative',
+    marginBottom: 16,
   },
   textArea: { 
     backgroundColor: '#e6e6e6', 
     borderRadius: 8, 
     padding: 12, 
-    marginBottom: 16, 
+    minHeight: 120,
+    textAlignVertical: 'top',
+    paddingRight: 40,
+  },
+  deleteBlockButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    padding: 5,
+    zIndex: 1,
+  },
+  imageBlockContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  storyImage: {
+    width: '100%',
     height: 200,
-    textAlignVertical: 'top'
+    borderRadius: 8,
+  },
+  deleteImageButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 15,
+    padding: 2,
+  },
+  actionsContainer: {
+    marginTop: 10,
+  },
+  blockActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  actionButton: {
+    backgroundColor: '#4CAF50',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 0.48,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   button: { 
     backgroundColor: '#4CAF50', 
@@ -332,13 +628,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  illustrationContainer: {
-    marginBottom: 16,
-    alignItems: 'center'
-  },
-  illustration: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8
-  }
 });

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Image,ActivityIndicator,Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Image, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 import services from '../services';
 
 export default function AIIllustrationScreen({ navigation, route }: { navigation: any, route: any }) {
   const [description, setDescription] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
   
   const storyId = route.params?.storyId;
+  const onImageGenerated = route.params?.onImageGenerated;
 
   const handleGenerateImage = async () => {
     if (!description || description.trim() === '') {
@@ -37,6 +41,47 @@ export default function AIIllustrationScreen({ navigation, route }: { navigation
     setImageUri(null);
   };
 
+  const saveToGallery = async () => {
+    if (!imageUri) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant permission to save images to your gallery');
+        setSaving(false);
+        return;
+      }
+
+      const fileUri = FileSystem.documentDirectory + 'temp_image.jpg';
+      const downloadResult = await FileSystem.downloadAsync(imageUri, fileUri);
+
+      if (downloadResult.status === 200) {
+        const asset = await MediaLibrary.createAssetAsync(fileUri);
+        Alert.alert('Success', 'Image saved to gallery successfully');
+        
+        if (onImageGenerated) {
+          onImageGenerated(downloadResult.uri);
+          navigation.goBack();
+        }
+      } else {
+        throw new Error('Failed to download image');
+      }
+
+      setSaving(false);
+    } catch (error) {
+      setSaving(false);
+      console.error('Error saving image:', error);
+      Alert.alert(
+        'Save Failed', 
+        error instanceof Error ? error.message : 'An unknown error occurred when saving the image'
+      );
+    }
+  };
+
   const handleInsertImage = async () => {
     if (!imageUri) {
       return;
@@ -44,12 +89,13 @@ export default function AIIllustrationScreen({ navigation, route }: { navigation
 
     if (storyId) {
       try {
-        const updatedStory = await services.story.updateStory(storyId, {
-          illustrationUrl: imageUri
-        });
+        await saveToGallery();
         
-        Alert.alert('Success', 'Image inserted into story');
-        navigation.goBack();
+        navigation.navigate('WriteStory', { 
+          storyId, 
+          illustrationUrl: imageUri,
+          shouldAddImage: true
+        });
       } catch (error) {
         Alert.alert(
           'Insert Failed', 
@@ -57,7 +103,12 @@ export default function AIIllustrationScreen({ navigation, route }: { navigation
         );
       }
     } else {
-      navigation.navigate('WriteStory', { illustrationUrl: imageUri });
+      if (onImageGenerated) {
+        await saveToGallery();
+      } else {
+        Alert.alert('Error', 'Missing story ID or callback function');
+        navigation.goBack();
+      }
     }
   };
 
@@ -128,17 +179,39 @@ export default function AIIllustrationScreen({ navigation, route }: { navigation
         )}
       </View>
       
-      <TouchableOpacity 
-        style={[
-          styles.insertButton, 
-          { backgroundColor: imageUri && !generating ? '#4CAF50' : '#ccc' }
-        ]} 
-        onPress={handleInsertImage}
-        disabled={!imageUri || generating}
-      >
-        <Ionicons name="add-outline" size={24} color="#fff" />
-        <Text style={styles.buttonText}>Insert into Story</Text>
-      </TouchableOpacity>
+      <View style={styles.bottomButtonsContainer}>
+        <TouchableOpacity 
+          style={[
+            styles.actionButton, 
+            { backgroundColor: imageUri && !generating ? '#4CAF50' : '#ccc' }
+          ]} 
+          onPress={saveToGallery}
+          disabled={!imageUri || generating || saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="save-outline" size={24} color="#fff" />
+              <Text style={styles.buttonText}>Save to Gallery</Text>
+            </>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.actionButton, 
+            { backgroundColor: imageUri && !generating ? '#2196F3' : '#ccc' }
+          ]} 
+          onPress={handleInsertImage}
+          disabled={!imageUri || generating || saving}
+        >
+          <Ionicons name="add-outline" size={24} color="#fff" />
+          <Text style={styles.buttonText}>
+            {onImageGenerated ? "Use as Cover" : "Insert into Story"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -224,14 +297,15 @@ const styles = StyleSheet.create({
   },
   
   imageContainer: {
-    marginTop: 30,
+    marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
     height: 250,
+    marginHorizontal: 16,
   },
   
   placeholder: {
-    width: 250,
+    width: '100%',
     height: 250,
     backgroundColor: '#ddd',
     alignItems: 'center',
@@ -248,21 +322,25 @@ const styles = StyleSheet.create({
   },
   
   generatedImage: {
-    width: 250,
+    width: '100%',
     height: 250,
     borderRadius: 12,
     backgroundColor: '#e6e6e6',
   },
   
-  insertButton: {
+  bottomButtonsContainer: {
+    marginTop: 'auto',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    marginHorizontal: 20,
     borderRadius: 8,
-    marginBottom: 20,
-    marginTop: 20,
+    marginBottom: 12,
   },
 
   generatingContainer: {
