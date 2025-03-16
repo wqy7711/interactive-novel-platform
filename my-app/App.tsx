@@ -11,6 +11,8 @@ import BranchDesignScreen from './screens/BranchDesignScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
 import BookmarksScreen from './screens/BookmarksScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
+import MyStoriesScreen from './screens/MyStoriesScreen';
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
 import AdminProfileScreen from './screens/AdminProfileScreen';
 import StoryReviewScreen from './screens/StoryReviewScreen';
@@ -110,6 +112,16 @@ export default function App() {
           options={{ title: 'Profile' }} 
         />
         <Stack.Screen 
+          name="EditProfile" 
+          component={EditProfileScreen} 
+          options={{ title: 'Edit Profile', headerShown: false }} 
+        />
+        <Stack.Screen 
+          name="MyStories" 
+          component={MyStoriesScreen} 
+          options={{ title: 'My Stories', headerShown: false }} 
+        />
+        <Stack.Screen 
           name="AdminDashboard" 
           component={AdminDashboardScreen} 
           options={{ title: 'Admin Dashboard' }} 
@@ -143,5 +155,3 @@ export default function App() {
     </NavigationContainer>
   );
 }
-
-

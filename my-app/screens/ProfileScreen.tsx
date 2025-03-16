@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image,Alert,ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import services from '../services';
 
@@ -29,7 +29,13 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
     };
 
     fetchUserInfo();
-  }, []);
+    
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchUserInfo();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -60,7 +66,7 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
   };
 
   const navigateToMyStories = () => {
-    Alert.alert('My Stories', 'Navigate to My Stories screen');
+    navigation.navigate('MyStories');
   };
 
   const navigateToBookmarks = () => {
@@ -68,7 +74,7 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
   };
 
   const handleEditProfile = () => {
-    Alert.alert('Edit Profile', 'Navigate to Edit Profile screen');
+    navigation.navigate('EditProfile');
   };
 
   if (loading) {
