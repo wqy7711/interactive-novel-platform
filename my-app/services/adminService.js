@@ -158,7 +158,7 @@ const adminService = {
   getPendingComments: async () => {
     try {
       const commentsRef = collection(db, COMMENTS_COLLECTION);
-      const q = query(commentsRef, where("status", "==", "pending"), orderBy("createdAt", "desc"));
+      const q = query(commentsRef, where("status", "==", "pending"));
       const querySnapshot = await getDocs(q);
       
       const comments = [];
@@ -167,6 +167,11 @@ const adminService = {
           _id: doc.id,
           ...doc.data()
         });
+      });
+      
+      comments.sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
       return comments;

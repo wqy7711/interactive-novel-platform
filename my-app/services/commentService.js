@@ -1,6 +1,6 @@
 import { 
   collection, query, where, doc, getDoc, getDocs, 
-  addDoc, updateDoc, deleteDoc, orderBy
+  addDoc, updateDoc, deleteDoc
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -11,12 +11,12 @@ const commentService = {
     try {
       const commentsRef = collection(db, COMMENTS_COLLECTION);
       
-      const baseQuery = query(
+      const q = query(
         commentsRef, 
         where("storyId", "==", storyId)
       );
       
-      const querySnapshot = await getDocs(baseQuery);
+      const querySnapshot = await getDocs(q);
 
       const comments = [];
       querySnapshot.forEach((doc) => {
