@@ -31,10 +31,13 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
   const [newChoiceText, setNewChoiceText] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [branchPath, setBranchPath] = useState<Array<{id: string, text: string}>>([]);
 
   const storyId = route.params?.storyId;
   const parentBranchId = route.params?.parentBranchId;
   const choiceIndex = route.params?.choiceIndex;
+  const parentChoiceText = route.params?.parentChoiceText;
+  const previousBranchPath = route.params?.branchPath || [];
 
   useEffect(() => {
     if (!storyId) {
@@ -45,6 +48,12 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
 
     fetchBranches();
   }, [storyId]);
+
+  useEffect(() => {
+    if (previousBranchPath.length > 0) {
+      setBranchPath(previousBranchPath);
+    }
+  }, [previousBranchPath]);
 
   const fetchBranches = async () => {
     try {
@@ -66,6 +75,17 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
         if (parentBranch && parentBranch.choices && parentBranch.choices[choiceIndex]) {
           const targetBranchId = parentBranch.choices[choiceIndex].nextBranchId;
           const targetBranch = formattedBranches.find(branch => branch._id === targetBranchId);
+          
+          if (parentChoiceText && parentBranch) {
+            const newPathItem = {
+              id: parentBranch._id,
+              text: parentChoiceText
+            };
+            
+            if (!branchPath.some(item => item.id === newPathItem.id)) {
+              setBranchPath(prevPath => [...prevPath, newPathItem]);
+            }
+          }
           
           if (targetBranch) {
             setCurrentBranch(targetBranch);
@@ -182,10 +202,12 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
       setEditing(false);
       await fetchBranches();
       Alert.alert('Success', 'Branch saved successfully');
+      return true;
     } catch (error) {
       setSaving(false);
       console.error('Error saving branch:', error);
       Alert.alert('Error', 'Failed to save branch');
+      return false;
     }
   };
 
@@ -209,18 +231,36 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
     }
     
     const targetBranchId = currentBranch.choices[choiceIndex].nextBranchId;
+    const choiceText = currentBranch.choices[choiceIndex].text;
 
-    handleSaveBranch().then(() => {
-      const targetBranch = branches.find(b => b._id === targetBranchId);
-      
-      if (targetBranch) {
-        handleEditBranch(targetBranch);
-      } else {
-        navigation.push('BranchDesign', { 
-          storyId: storyId, 
-          parentBranchId: currentBranch._id,
-          choiceIndex: choiceIndex 
-        });
+    handleSaveBranch().then((success) => {
+      if (success) {
+        const targetBranch = branches.find(b => b._id === targetBranchId);
+        
+        const updatedPath = [...branchPath];
+        if (currentBranch) {
+          const newPathItem = {
+            id: currentBranch._id,
+            text: choiceText
+          };
+
+          if (!updatedPath.some(item => item.id === newPathItem.id && item.text === newPathItem.text)) {
+            updatedPath.push(newPathItem);
+          }
+        }
+        
+        if (targetBranch) {
+          handleEditBranch(targetBranch);
+          setBranchPath(updatedPath);
+        } else {
+          navigation.push('BranchDesign', { 
+            storyId: storyId, 
+            parentBranchId: currentBranch._id,
+            choiceIndex: choiceIndex,
+            parentChoiceText: choiceText,
+            branchPath: updatedPath
+          });
+        }
       }
     });
   };
@@ -234,14 +274,31 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
     }
     
     const targetBranchId = currentBranch.choices[choiceIndex].nextBranchId;
+    const choiceText = currentBranch.choices[choiceIndex].text;
     
-    handleSaveBranch().then(() => {
-      navigation.navigate('WriteStory', { 
-        storyId: storyId,
-        branchId: targetBranchId,
-        isNewBranch: true,
-        isNewContent: true
-      });
+    handleSaveBranch().then((success) => {
+      if (success) {
+        const updatedPath = [...branchPath];
+        if (currentBranch) {
+          const newPathItem = {
+            id: currentBranch._id,
+            text: choiceText
+          };
+          
+          if (!updatedPath.some(item => item.id === newPathItem.id && item.text === newPathItem.text)) {
+            updatedPath.push(newPathItem);
+          }
+        }
+        
+        navigation.navigate('WriteStory', { 
+          storyId: storyId,
+          branchId: targetBranchId,
+          isNewBranch: true,
+          isNewContent: true,
+          branchPath: updatedPath,
+          parentChoiceText: choiceText
+        });
+      }
     });
   };
 
@@ -253,6 +310,15 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
           <Ionicons name="close-circle" size={22} color="#E57373" />
         </TouchableOpacity>
       </View>
+    </View>
+  );
+
+  const renderBranchPathItem = ({ item, index }: { item: { id: string, text: string }, index: number }) => (
+    <View style={styles.pathItem}>
+      <Text style={styles.pathItemText}>{item.text}</Text>
+      {index < branchPath.length - 1 && (
+        <Ionicons name="chevron-forward" size={16} color="#666" />
+      )}
     </View>
   );
 
@@ -326,6 +392,19 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
             )}
           </TouchableOpacity>
         </View>
+
+        {branchPath.length > 0 && (
+          <View style={styles.pathContainer}>
+            <FlatList
+              data={branchPath}
+              renderItem={renderBranchPathItem}
+              keyExtractor={(item, index) => `path-${index}`}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.pathList}
+            />
+          </View>
+        )}
 
         <View style={styles.editContainer}>
           <Text style={styles.label}>Branch Text</Text>
@@ -401,6 +480,19 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
         <View style={{ width: 28 }}></View>
       </View>
 
+      {branchPath.length > 0 && (
+        <View style={styles.pathContainer}>
+          <FlatList
+            data={branchPath}
+            renderItem={renderBranchPathItem}
+            keyExtractor={(item, index) => `path-${index}`}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pathList}
+          />
+        </View>
+      )}
+
       <FlatList
         data={branches}
         keyExtractor={(item) => item._id}
@@ -434,6 +526,27 @@ const styles = StyleSheet.create({
     fontSize: 20, 
     fontWeight: 'bold', 
     color: '#333' 
+  },
+  pathContainer: {
+    backgroundColor: '#e6e6e6',
+    paddingVertical: 8,
+  },
+  pathList: {
+    paddingHorizontal: 16,
+  },
+  pathItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  pathItemText: {
+    fontSize: 12,
+    color: '#333',
+    marginRight: 4,
   },
   list: { 
     padding: 16,

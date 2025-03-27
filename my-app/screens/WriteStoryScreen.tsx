@@ -27,15 +27,22 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isNewBranch, setIsNewBranch] = useState(false);
+  const [branchPath, setBranchPath] = useState<Array<{id: string, text: string}>>([]);
 
   useEffect(() => {
     const id = route.params?.storyId;
     const branch = route.params?.branchId;
     const isNew = route.params?.isNewBranch === true;
     const isNewContent = route.params?.isNewContent === true;
+    const previousBranchPath = route.params?.branchPath || [];
+    const parentChoiceText = route.params?.parentChoiceText;
     
     if (id) {
       setStoryId(id);
+      
+      if (previousBranchPath.length > 0) {
+        setBranchPath(previousBranchPath);
+      }
       
       if (branch) {
         setBranchId(branch);
@@ -300,7 +307,7 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: "images",
           allowsEditing: true,
           quality: 0.8,
         });
@@ -343,10 +350,14 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
         if (branchId) {
           navigation.navigate('BranchDesign', { 
             storyId, 
-            parentBranchId: branchId
+            parentBranchId: branchId,
+            branchPath
           });
         } else {
-          navigation.navigate('BranchDesign', { storyId });
+          navigation.navigate('BranchDesign', { 
+            storyId,
+            branchPath
+          });
         }
       }
     });
@@ -394,6 +405,15 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
       ]
     );
   };
+
+  const renderBranchPathItem = ({ item, index }: { item: { id: string, text: string }, index: number }) => (
+    <View style={styles.pathItem}>
+      <Text style={styles.pathItemText}>{item.text}</Text>
+      {index < branchPath.length - 1 && (
+        <Ionicons name="chevron-forward" size={16} color="#666" />
+      )}
+    </View>
+  );
 
   const renderContentBlock = ({ item }: { item: ContentBlock }) => {
     if (item.type === 'text') {
@@ -448,14 +468,18 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
     );
   }
 
+  const title = branchPath.length > 0 
+    ? `Writing ${branchPath[branchPath.length - 1].text} Branch` 
+    : (branchId ? "Write Branch Story" : "Write Story");
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerText}>
-          {branchId ? "Write Branch Story" : "Write Story"}
+        <Text style={styles.headerText} numberOfLines={1}>
+          {title}
         </Text>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
           {saving ? (
@@ -465,6 +489,19 @@ export default function WriteStoryScreen({ navigation, route }: { navigation: an
           )}
         </TouchableOpacity>
       </View>
+
+      {branchPath.length > 0 && (
+        <View style={styles.pathContainer}>
+          <FlatList
+            data={branchPath}
+            renderItem={renderBranchPathItem}
+            keyExtractor={(item, index) => `path-${index}`}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pathList}
+          />
+        </View>
+      )}
 
       <FlatList
         data={contentBlocks}
@@ -535,7 +572,30 @@ const styles = StyleSheet.create({
   headerText: { 
     fontSize: 20, 
     fontWeight: 'bold', 
-    color: '#333' 
+    color: '#333',
+    flex: 1,
+    textAlign: 'center'
+  },
+  pathContainer: {
+    backgroundColor: '#e6e6e6',
+    paddingVertical: 8,
+  },
+  pathList: {
+    paddingHorizontal: 16,
+  },
+  pathItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  pathItemText: {
+    fontSize: 12,
+    color: '#333',
+    marginRight: 4,
   },
   contentContainer: { 
     padding: 16,

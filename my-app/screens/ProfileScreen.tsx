@@ -69,6 +69,10 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
     navigation.navigate('MyStories');
   };
 
+  const navigateToFavorites = () => {
+    navigation.navigate('Favorites');
+  };
+
   const navigateToBookmarks = () => {
     navigation.navigate('Bookmarks');
   };
@@ -109,6 +113,11 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
         <TouchableOpacity style={styles.optionItem} onPress={navigateToMyStories}>
           <Ionicons name="book-outline" size={24} color="#4CAF50" />
           <Text style={styles.optionText}>My Stories</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.optionItem} onPress={navigateToFavorites}>
+          <Ionicons name="heart-outline" size={24} color="#4CAF50" />
+          <Text style={styles.optionText}>My Favorites</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.optionItem} onPress={navigateToBookmarks}>
