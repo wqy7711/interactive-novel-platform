@@ -16,6 +16,8 @@ const authService = {
         throw { code: 'auth/invalid-email' };
       }
       
+      const safeRole = 'user';
+      
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         userData.email, 
@@ -30,7 +32,7 @@ const authService = {
         uid: userCredential.user.uid,
         email: userData.email,
         username: userData.username,
-        role: userData.role || 'user',
+        role: safeRole,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -68,7 +70,7 @@ const authService = {
             uid: userCredential.user.uid,
             email: credentials.email,
             username: userCredential.user.displayName || credentials.email.split('@')[0],
-            role: credentials.role || 'user',
+            role: 'user',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
@@ -78,6 +80,11 @@ const authService = {
           const token = await userCredential.user.getIdToken();
           await AsyncStorage.setItem('authToken', token);
           await AsyncStorage.setItem('userInfo', JSON.stringify(basicUserDoc));
+          
+          if (credentials.role !== basicUserDoc.role) {
+            console.error(`Role mismatch: User is ${basicUserDoc.role} but tried to login as ${credentials.role}`);
+            throw new Error('Access denied: Invalid role');
+          }
           
           return basicUserDoc;
         }
@@ -90,7 +97,12 @@ const authService = {
         }
         
         if (userData.role !== credentials.role) {
-          throw new Error('Role mismatch');
+          console.error(`Role mismatch: User is ${userData.role} but tried to login as ${credentials.role}`);
+          throw new Error('Access denied: Invalid role');
+        }
+
+        if (userData.role === 'blocked') {
+          throw new Error('This account has been blocked. Please contact support.');
         }
         
         const token = await userCredential.user.getIdToken();
@@ -106,12 +118,19 @@ const authService = {
       } catch (firestoreError) {
         console.error('Error getting user data from Firestore:', firestoreError);
         
+        const safeRole = 'user';
+        
         const basicUserInfo = {
           uid: userCredential.user.uid,
           email: userCredential.user.email || '',
           username: userCredential.user.displayName || (userCredential.user.email ? userCredential.user.email.split('@')[0] : 'User'),
-          role: credentials.role || 'user'
+          role: safeRole
         };
+        
+        if (credentials.role !== safeRole) {
+          console.error(`Role mismatch in error handler: Defaulting to ${safeRole} but login attempted as ${credentials.role}`);
+          throw new Error('Access denied: Invalid role');
+        }
         
         await AsyncStorage.setItem('userInfo', JSON.stringify(basicUserInfo));
         return basicUserInfo;
@@ -140,9 +159,11 @@ const authService = {
 
   updateProfile: async (uid, userData) => {
     try {
+      const { role, ...safeUpdateData } = userData;
+      
       const userRef = doc(db, "users", uid);
       const updateData = {
-        ...userData,
+        ...safeUpdateData,
         updatedAt: new Date().toISOString()
       };
       
