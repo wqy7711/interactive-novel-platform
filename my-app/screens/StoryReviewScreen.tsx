@@ -110,7 +110,15 @@ export default function StoryReviewScreen({ navigation }: { navigation: any }) {
   const renderStoryItem = ({ item }: { item: Story }) => (
     <View style={styles.card}>
       <View style={styles.cardContent}>
-        <Text style={styles.title}>{item.title}</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{item.title}</Text>
+          <TouchableOpacity 
+            style={styles.storyLink}
+            onPress={() => navigation.navigate('StoryDetail', { storyId: item._id, fromAdmin: true })}
+          >
+            <Text style={styles.storyLinkText}>View Story</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.author}>Author ID: {item.authorId}</Text>
         {item.description && (
           <Text style={styles.description} numberOfLines={2}>
@@ -208,11 +216,29 @@ const styles = StyleSheet.create({
   cardContent: { 
     marginBottom: 16 
   },
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
   title: { 
     fontSize: 18, 
     fontWeight: 'bold', 
     color: '#333',
-    marginBottom: 8
+    flex: 1
+  },
+  storyLink: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginLeft: 8
+  },
+  storyLinkText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold'
   },
   author: { 
     fontSize: 14, 

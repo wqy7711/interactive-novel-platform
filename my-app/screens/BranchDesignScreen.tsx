@@ -106,6 +106,11 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
     }
   };
 
+  // 修改：使用更标准的分支ID格式
+  const generateBranchId = (prefix = 'branch') => {
+    return `${prefix}${branches.length + 1}_${Math.floor(Date.now() / 1000)}`;
+  };
+
   const handleAddBranch = (predefinedId?: string) => {
     setCurrentBranch(null);
     setBranchText('');
@@ -113,6 +118,7 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
     setEditing(true);
     
     if (predefinedId) {
+      // 如果提供了预定义ID，使用它
       setCurrentBranch({
         _id: predefinedId,
         text: '',
@@ -134,9 +140,10 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
       return;
     }
 
+    // 修改：为下一个分支创建一个标准格式的ID
     const newChoice = {
       text: newChoiceText,
-      nextBranchId: `branch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      nextBranchId: generateBranchId()
     };
 
     setChoices([...choices, newChoice]);
@@ -193,9 +200,16 @@ export default function BranchDesignScreen({ navigation, route }: { navigation: 
           ];
         }
 
+        // 确保分支文本也被保存到分支中
         await services.story.updateStory(storyId, { branches: updatedBranches });
       } else {
-        await services.story.addBranch(storyId, branchData);
+        // 如果是新分支，生成标准格式的ID
+        const newBranchId = generateBranchId();
+        const newBranch = {
+          _id: newBranchId,
+          ...branchData
+        };
+        await services.story.addBranch(storyId, newBranch);
       }
 
       setSaving(false);

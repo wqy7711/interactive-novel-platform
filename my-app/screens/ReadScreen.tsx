@@ -48,6 +48,11 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
 
   const { storyId, branchId, progress } = route.params || {};
 
+  // 调试信息
+  useEffect(() => {
+    console.log('ReadScreen loaded with params:', { storyId, branchId, progress });
+  }, [storyId, branchId, progress]);
+
   useEffect(() => {
     if (storyId) {
       fetchStory();
@@ -60,6 +65,7 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
   const fetchStory = async () => {
     try {
       setLoading(true);
+      console.log(`Fetching story with ID: ${storyId}`);
       const storyData = await services.story.getStoryById(storyId);
       
       const storyObj: Story = { _id: storyId };
@@ -70,12 +76,21 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
         });
       }
       
+      console.log(`Story data fetched:`, {
+        title: storyObj.title,
+        branchesCount: storyObj.branches?.length || 0,
+        hasContentBlocks: !!storyObj.contentBlocks && storyObj.contentBlocks.length > 0,
+        hasBranchContentBlocks: !!storyObj.branchContentBlocks,
+      });
+      
       setStory(storyObj);
       
       if (branchId) {
+        console.log(`Loading branch content for branch ID: ${branchId}`);
         await loadBranchContent(storyObj, branchId);
       } 
       else {
+        console.log('Loading main content');
         await loadMainContent(storyObj);
       }
       
@@ -93,16 +108,23 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
 
   const loadMainContent = async (storyObj: Story) => {
     try {
+      console.log('Loading main content for story');
+      
+      // 首先尝试加载contentBlocks
       if (storyObj.contentBlocks && storyObj.contentBlocks.length > 0) {
+        console.log('Using story contentBlocks');
         setContentBlocks(storyObj.contentBlocks);
         
         if (storyObj.branches && storyObj.branches.length > 0) {
           const mainBranch = storyObj.branches[0];
+          console.log(`Setting first branch: ${mainBranch._id}`);
           setCurrentBranch(mainBranch);
         }
       } 
+      // 如果没有contentBlocks，尝试使用分支内容
       else if (storyObj.branches && storyObj.branches.length > 0) {
         const mainBranch = storyObj.branches[0];
+        console.log(`Using first branch as main content: ${mainBranch._id}`);
         setCurrentBranch(mainBranch);
         
         setBranchHistory([]);
@@ -110,17 +132,37 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
         if (mainBranch.text) {
           setContentBlocks([{ id: '1', type: 'text', content: mainBranch.text }]);
         } else {
-          setContentBlocks([]);
+          // 尝试从branchContentBlocks获取内容
+          if (storyObj.branchContentBlocks && storyObj.branchContentBlocks[mainBranch._id]) {
+            console.log(`Found content in branchContentBlocks for branch: ${mainBranch._id}`);
+            setContentBlocks(storyObj.branchContentBlocks[mainBranch._id]);
+          } else {
+            setContentBlocks([]);
+          }
         }
       } else {
+        console.log('No content or branches found');
         setContentBlocks([{ id: '1', type: 'text', content: 'The story has no content yet.' }]);
         setCurrentBranch(null);
       }
       
-      console.log('Story Branches:', storyObj.branches);
+      // 详细记录分支信息，以便调试
+      console.log('Story Branches:', storyObj.branches?.map(b => ({ id: b._id, hasChoices: (b.choices?.length || 0) > 0 })));
+      
       if (storyObj.branches && storyObj.branches.length > 0) {
-        console.log('First Branch:', storyObj.branches[0]);
-        console.log('First Branch Choices:', storyObj.branches[0].choices);
+        const firstBranch = storyObj.branches[0];
+        console.log('First Branch:', { 
+          id: firstBranch._id, 
+          textLength: firstBranch.text?.length || 0,
+          choicesCount: firstBranch.choices?.length || 0
+        });
+        
+        if (firstBranch.choices && firstBranch.choices.length > 0) {
+          console.log('First Branch Choices:', firstBranch.choices.map(c => ({ 
+            text: c.text, 
+            nextBranchId: c.nextBranchId 
+          })));
+        }
       }
     } catch (error) {
       console.error('Error in loadMainContent:', error);
@@ -130,17 +172,23 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
 
   const loadBranchContent = async (storyObj: Story, branchId: string) => {
     try {
+      console.log(`Loading content for branch: ${branchId}`);
       let branchBlocks: ContentBlock[] = [];
       let foundBranch = false;
       
+      // 先检查branchContentBlocks
       if (storyObj.branchContentBlocks && storyObj.branchContentBlocks[branchId]) {
+        console.log(`Found content blocks in branchContentBlocks for: ${branchId}`);
         branchBlocks = storyObj.branchContentBlocks[branchId];
         foundBranch = true;
       } 
       else {
+        // 如果在branchContentBlocks中没找到，尝试从服务获取
         try {
+          console.log(`Trying to get branch content blocks from service for: ${branchId}`);
           branchBlocks = await services.story.getBranchContentBlocks(storyId, branchId);
           if (branchBlocks && branchBlocks.length > 0) {
+            console.log(`Got content blocks from service for: ${branchId}`);
             foundBranch = true;
           }
         } catch (error) {
@@ -149,19 +197,43 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
       }
       
       if (foundBranch && branchBlocks.length > 0) {
+        console.log(`Using content blocks for branch: ${branchId}`);
         setContentBlocks(branchBlocks);
         
         if (storyObj.branches) {
-          const branch = storyObj.branches.find(b => b._id === branchId);
+          // 尝试精确匹配分支ID
+          let branch = storyObj.branches.find(b => b._id === branchId);
+          
+          // 如果无法精确匹配，尝试部分匹配（处理ID格式不一致的情况）
+          if (!branch) {
+            console.log(`Could not find exact branch match for: ${branchId}, trying partial match`);
+            branch = storyObj.branches.find(b => 
+              b._id.includes(branchId) || branchId.includes(b._id)
+            );
+          }
+          
           if (branch) {
+            console.log(`Found branch: ${branch._id}, setting as current branch`);
             setCurrentBranch(branch);
           }
         }
       } 
+      // 如果没有找到内容块，尝试使用分支的text
       else if (storyObj.branches) {
-        const branch = storyObj.branches.find(b => b._id === branchId);
+        console.log(`Looking for branch text for: ${branchId}`);
+        // 尝试精确匹配
+        let branch = storyObj.branches.find(b => b._id === branchId);
+        
+        // 如果无法精确匹配，尝试部分匹配
+        if (!branch) {
+          console.log(`Could not find exact branch match for: ${branchId}, trying partial match`);
+          branch = storyObj.branches.find(b => 
+            b._id.includes(branchId) || branchId.includes(b._id)
+          );
+        }
         
         if (branch) {
+          console.log(`Found branch: ${branch._id} with text length: ${branch.text?.length || 0}`);
           setCurrentBranch(branch);
           if (branch.text) {
             setContentBlocks([{ id: '1', type: 'text', content: branch.text }]);
@@ -170,11 +242,24 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
           }
         } 
         else {
+          console.log(`Branch not found, trying to fetch branches`);
           try {
             const branches = await services.story.getBranches(storyId);
-            const fetchedBranch = branches.find((b: StoryBranch) => b._id === branchId);
+            console.log(`Fetched ${branches.length} branches, looking for: ${branchId}`);
+            
+            // 尝试精确匹配
+            let fetchedBranch = branches.find((b: StoryBranch) => b._id === branchId);
+            
+            // 如果无法精确匹配，尝试部分匹配
+            if (!fetchedBranch) {
+              console.log(`Could not find exact match in fetched branches, trying partial match`);
+              fetchedBranch = branches.find((b: StoryBranch) => 
+                b._id.includes(branchId) || branchId.includes(b._id)
+              );
+            }
             
             if (fetchedBranch) {
+              console.log(`Found branch in fetched branches: ${fetchedBranch._id}`);
               setCurrentBranch(fetchedBranch);
               if (fetchedBranch.text) {
                 setContentBlocks([{ id: '1', type: 'text', content: fetchedBranch.text }]);
@@ -193,6 +278,7 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
           }
         }
       } else {
+        console.log('No branches found in story');
         setContentBlocks([{ id: '1', type: 'text', content: 'The story has no branches.' }]);
         setCurrentBranch(null);
       }
@@ -205,6 +291,8 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
 
   const handleChoiceSelect = async (nextBranchId: string, choiceText: string) => {
     try {
+      console.log(`Selected choice: "${choiceText}" leading to branch: ${nextBranchId}`);
+      
       if (!story) return;
       
       let branches: StoryBranch[] = [];
@@ -221,9 +309,20 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
         }
       }
       
-      const nextBranch = branches.find((b: any) => b._id === nextBranchId);
+      // 查找下一个分支 - 首先尝试精确匹配
+      let nextBranch = branches.find((b: any) => b._id === nextBranchId);
+      
+      // 如果没有精确匹配，尝试部分匹配
+      if (!nextBranch) {
+        console.log(`No exact match for branch ID: ${nextBranchId}, trying partial match`);
+        nextBranch = branches.find((b: any) => 
+          b._id.includes(nextBranchId) || nextBranchId.includes(b._id)
+        );
+      }
       
       if (nextBranch) {
+        console.log(`Found next branch: ${nextBranch._id}`);
+        
         if (currentBranch) {
           const historyItem: BranchPathItem = {
             id: `history-${branchHistory.length}`,
@@ -235,13 +334,14 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
         }
         
         setCurrentBranch(nextBranch);
-        await loadBranchContent(story, nextBranchId);
+        await loadBranchContent(story, nextBranch._id);
         
         if (scrollViewRef.current) {
           scrollViewRef.current.scrollTo({ y: 0, animated: true });
         }
         updateProgress();
       } else {
+        console.error(`Could not find next branch: ${nextBranchId}`);
         Alert.alert('Error', 'Could not find the next story branch');
       }
     } catch (error) {
@@ -255,15 +355,27 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
 
     try {
       const targetHistoryItem = branchHistory[historyIndex];
+      console.log(`Going back to branch: ${targetHistoryItem.branchId}`);
       
       const newHistory = branchHistory.slice(0, historyIndex);
       setBranchHistory(newHistory);
       
       if (story.branches) {
-        const targetBranch = story.branches.find(b => b._id === targetHistoryItem.branchId);
+        // 尝试精确匹配
+        let targetBranch = story.branches.find(b => b._id === targetHistoryItem.branchId);
+        
+        // 如果无法精确匹配，尝试部分匹配
+        if (!targetBranch) {
+          console.log(`No exact match for history branch: ${targetHistoryItem.branchId}, trying partial match`);
+          targetBranch = story.branches.find(b => 
+            b._id.includes(targetHistoryItem.branchId) || targetHistoryItem.branchId.includes(b._id)
+          );
+        }
+        
         if (targetBranch) {
+          console.log(`Found history branch: ${targetBranch._id}`);
           setCurrentBranch(targetBranch);
-          await loadBranchContent(story, targetHistoryItem.branchId);
+          await loadBranchContent(story, targetBranch._id);
           
           if (scrollViewRef.current) {
             scrollViewRef.current.scrollTo({ y: 0, animated: true });
@@ -362,6 +474,7 @@ export default function ReadScreen({ navigation, route }: { navigation: any, rou
     );
   }
 
+  // 调试信息
   console.log('Current Branch:', currentBranch ? {
     id: currentBranch._id,
     textLength: currentBranch.text ? currentBranch.text.length : 0,
